@@ -1,0 +1,10 @@
+using NewFinance.Concrete.Contracts;
+using NewFinance.Core;
+
+namespace NewFinance.Concrete.Accounts
+{
+    public class Property(PropertySchedule schedule) : Account
+    {
+        public PropertySchedule Schedule { get; } = schedule;
+    }
+}
