@@ -14,6 +14,6 @@ namespace NewFinance.Concrete.Entities
         ///   - personal deductible expenses
         ///   - super contributions
         /// </summary>
-        public List<Contract> Contracts { get; } = new List<Contract>();
+        public List<Contract> TaxableContracts { get; } = new List<Contract>();
     }
 }

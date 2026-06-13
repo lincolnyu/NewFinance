@@ -15,18 +15,12 @@ namespace NewFinance.Concrete.Contracts
 
         protected override (DateTime processedTime, DateTime bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
         {
-            if (currentTime.Month == 6 && currentTime.Day == 30)
+            if (currentTime.IsEOFY())
             {
                 PerformTaxAccounting(currentTime);
-                
-                return (currentTime, currentTime.AddYears(1));
             }
 
-            var nextEOFY = new DateTime(currentTime.Year, 6, 30);
-            if (nextEOFY <= currentTime)
-            {
-                nextEOFY = nextEOFY.AddYears(1);
-            }
+            var nextEOFY = currentTime.NextEOFY();
 
             executor.ReEnsureNextForcedTime(nextEOFY);
 
@@ -58,7 +52,7 @@ namespace NewFinance.Concrete.Contracts
            
             decimal totalIncome = 0;
             decimal totalDeduction = 0;
-            foreach (var contract in TaxPayer.Contracts)
+            foreach (var contract in TaxPayer.TaxableContracts)
             {
                 if (contract is Employment employment)
                 {

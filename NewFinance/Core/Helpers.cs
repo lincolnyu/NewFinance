@@ -45,5 +45,20 @@ namespace NewFinance.Core
             subscription.Reset();
             return change;
         }
+
+        public static bool IsEOFY(this DateTime time)
+        {
+            return time.Month == 6 && time.Day == 30;
+        }
+
+        public static DateTime NextEOFY(this DateTime time)
+        {
+            var nextEOFY = new DateTime(time.Year, 6, 30);
+            if (nextEOFY <= time)
+            {
+                nextEOFY = nextEOFY.AddYears(1);
+            }
+            return nextEOFY;
+        }
     }
 }
