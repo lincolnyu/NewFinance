@@ -39,7 +39,7 @@ namespace NewFinance.Concrete.Contracts
             var govFees = InitialTotalLevyAndRatesAnnualRate * levyInflation * (currentTime - lastTime).Days / Constants.DaysPerYear;
             cashOrRentalIncomeAccount.Balance -= govFees;
             // TODO Additional costs such as repair, adhoc...
-            ExtraFeesTracker.TrackChange(-govFees);
+            ExtraFeesTracker.TrackChange(govFees);
 
             if (currentTime == Sale?.Time)
             {

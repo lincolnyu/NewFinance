@@ -55,7 +55,7 @@ namespace NewFinance.Concrete.Contracts
 
                     var fees = propertySchedule.ExtraFeesTracker[this].GetTrackedChangeAndReset() * share;
 
-                    var netRentalTaxable = netRentalIncome - interestPaid + fees;
+                    var netRentalTaxable = netRentalIncome - interestPaid - fees;
 
                     var allowNegativeGearing = IsNegativeGearingAllowed(property, currentTime);
                     if (!allowNegativeGearing && netRentalTaxable < 0)
