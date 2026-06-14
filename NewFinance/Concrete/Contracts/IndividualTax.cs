@@ -27,7 +27,7 @@ namespace NewFinance.Concrete.Contracts
             return (currentTime, nextEOFY);
         }
 
-        private void PerformTaxAccounting(DateTime currentTime)
+        private void PerformTaxAccounting(DateTime _)
         {
             Dictionary<Property, decimal> propertyTaxableIncomes = new Dictionary<Property, decimal>();
 
@@ -38,11 +38,11 @@ namespace NewFinance.Concrete.Contracts
                     var propertySchedule = property.Schedule!;
                     (var _, var share) = property.Ownership.TryGetValue(TaxPayer, out var s) ? (TaxPayer, s) : (null, 0m);
 
-                    var loan = TaxPayer.Liabilities.OfType<Loan>().FirstOrDefault(loan => loan.Contract.Property == property);
+                    var loan = TaxPayer.Liabilities.OfType<Loan>().FirstOrDefault(loan => loan.Contract!.Property == property);
 
                     var netRentalIncome = propertySchedule.RentalInducedNetIncome.InflowTracker[this].GetTrackedChangeAndReset();
 
-                    var interestPaid = loan?.Contract.YearToDateInterestPaid * share ?? 0m;
+                    var interestPaid = loan?.Contract!.PaidInterestTracker[this].GetTrackedChangeAndReset() * share ?? 0m;
 
                     var taxableIncome = netRentalIncome - interestPaid;
 

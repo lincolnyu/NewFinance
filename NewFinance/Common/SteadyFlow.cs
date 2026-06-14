@@ -34,7 +34,7 @@ namespace NewFinance.Common
 
                 var inflow = rateInBucket * (decimal)executionTimeSpan.TotalDays; // pro-rate the inflow by the fraction of the time span that has passed in the current bucket
                 Account!.Balance += inflow;
-                InflowTracker.TrackIncrease(inflow);
+                InflowTracker.TrackChange(inflow);
 
                 if (currentTime == NextFlowChangeUpdateDate)
                 {

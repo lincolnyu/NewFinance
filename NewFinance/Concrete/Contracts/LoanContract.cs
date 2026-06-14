@@ -13,27 +13,40 @@ namespace NewFinance.Concrete.Contracts
         public decimal LoanAmount { get; set; }
 
         public decimal PurchaseAdditionalCost{ get; set; }
-
+        public bool AlreadySettled { get; }
         public decimal OffsetRatio { get; set; }
 
         public decimal AnnualPrincipalPayment { get; set; }
 
         public decimal AnnualInterestRate { get; set; }   // e.g. 0.05 for 5%
 
-        public decimal YearToDateInterestPaid { get; private set; }
+        public ChangeTracker PaidInterestTracker { get; } = new ChangeTracker();
 
-        public LoanContract(Loan loanAccount, Property property, decimal loanAmount, decimal purchaseAdditionalCost) : base(property.Schedule!.StartTime!.Value, loanAccount, $"Loan for {property.Name}")
+        public LoanContract(Loan loanAccount, Property property, decimal loanAmount, bool alreadySettled) : base(property.Schedule!.StartTime!.Value, loanAccount, $"Loan for {property.Name}")
         {
             Property = property;
             LoanAmount = loanAmount;
-            PurchaseAdditionalCost = purchaseAdditionalCost;
+            PurchaseAdditionalCost = property.PurchaseAdditionalCost;
+            AlreadySettled = alreadySettled;
+        }
+
+        override public void Reset(ContractExecutor executor)
+        {
+            base.Reset(executor);
+
+            Account!.Balance = 0;
         }
 
         protected override (DateTime processedTime, DateTime bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
         {
             if (currentTime == StartTime)
             {
-                ExecuteSettlement();
+                if (!AlreadySettled)
+                {
+                    ExecuteSettlement();
+                }
+                Account!.Balance = LoanAmount;
+
                 return (currentTime, currentTime.AddMonths(1));
             }
             else
@@ -58,8 +71,6 @@ namespace NewFinance.Concrete.Contracts
             var totalCost = Property.Balance + PurchaseAdditionalCost;
             var cashRequired = totalCost - LoanAmount;
             CashAccount.Balance -= cashRequired;
-            
-            Account!.Balance = LoanAmount;
         }
 
         private void ApplyRepayment(TimeSpan time)
@@ -71,7 +82,7 @@ namespace NewFinance.Concrete.Contracts
             CashAccount.Balance -= interest + principalPayment;
             Account!.Balance -= principalPayment;
 
-            YearToDateInterestPaid += interest;
+            PaidInterestTracker.TrackChange(interest);
         }
     }
 }

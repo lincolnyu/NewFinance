@@ -107,32 +107,12 @@ namespace NewFinance.Concrete.Contracts
             return cumulativeInflationFactor;
         }
 
-        public static Property CreatePropertyWithSchedule(string name, decimal purchasePrice, DateTime inflationStartTime, DateTime purchaseTime, DateTime rentalStartTime, decimal growthRate, decimal priceValueCap,
-            decimal initialYearlyRent, decimal totalRentalInducedRate, decimal rentIncreaseRate, decimal? rentCap, decimal initialTotalLevyAndRatesAnnualRate, decimal levyAndRatesInflationRate, Account rentalIncomeAccount)
-        {
-            var property = new Property(name);
-            var yearlyNetRent = initialYearlyRent * (1 - totalRentalInducedRate);
-            var rentalInflation = ConstantInflation(inflationStartTime, rentIncreaseRate);
-            var rentalNetInFlowDescriptor = rentalInflation.ApplyInflation(rentalStartTime, yearlyNetRent/Constants.DaysPerYear);
-            if (rentCap.HasValue)
-            {
-                FlowCapping(rentalNetInFlowDescriptor, rentCap.Value/Constants.DaysPerYear);
-            }
-            var schedule = new PropertySchedule(property, purchaseTime, purchasePrice, p=>p>=priceValueCap ? 0 : growthRate, rentalNetInFlowDescriptor, rentalIncomeAccount)
-            {
-                InitialTotalLevyAndRatesAnnualRate = initialTotalLevyAndRatesAnnualRate,
-                LevyAndRatesInflation = ConstantInflation(inflationStartTime, levyAndRatesInflationRate)
-            };
-            property.Schedule = schedule;
-            return property;
-        }
-
-        public static void FlowCapping(SteadyFlowDescriptor flow, decimal capRate)
+        public static void FlowCapping(SteadyFlowDescriptor flow, decimal capRate, bool isNegativeFlow)
         {
             for (int i = 0; i < flow.Inflows.Count; i++)
             {
                 var (rate, endTime) = flow.Inflows[i];
-                if (rate > capRate)
+                if (isNegativeFlow ? rate < capRate : rate > capRate)
                 {
                     flow.Inflows[i] = (capRate, endTime);
                 }

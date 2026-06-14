@@ -52,7 +52,7 @@ namespace NewFinance.Core
             }
         }
 
-        public void TrackIncrease(decimal increase)
+        public void TrackChange(decimal increase)
         {
             foreach (var tracker in _trackers.Values)
             {

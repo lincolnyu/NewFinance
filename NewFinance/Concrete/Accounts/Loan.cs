@@ -3,8 +3,8 @@ using NewFinance.Core;
 
 namespace NewFinance.Concrete.Accounts
 {
-    public class Loan(LoanContract contract, string name) : Account(name)
+    public class Loan(string name) : Account(name)
     {
-        public LoanContract Contract { get; } = contract;
+        public LoanContract? Contract { get; set; }
     }
 }
