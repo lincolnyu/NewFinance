@@ -25,8 +25,8 @@ namespace NewFinance.Concrete.Contracts
         {
             if (currentTime.IsEOFY())
             {
-                var row = new List<string>() { currentTime.ToString("yyyy-MM-dd") };
-                Console.WriteLine($"{currentTime:yyyy-MM-dd}:");
+                var row = new List<string>() { currentTime.ToString("yyyy") };
+                Console.WriteLine($"{currentTime:yyyy}:");
                 foreach (var col in ColumnItems)
                 {
                     if (col.Item1 is IHasBalance balanceItem)
