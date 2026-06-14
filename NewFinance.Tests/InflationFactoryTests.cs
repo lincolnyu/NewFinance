@@ -10,7 +10,7 @@ public class InflationFactoryTests
         var inflationStart = new DateTime(2026, 1, 11);
         var next = new DateTime(2026, 1, 21);
 
-        var descriptor = new Inflation(inflationStart, [(0.10m, next)]).ApplyInflationPreciseMatching(
+        var descriptor = new Inflation(inflationStart, [(0.10m*Constants.daysPerYear/(decimal)(next - inflationStart).TotalDays, next)]).ApplyInflationPreciseMatching(
             flowStart,
             100m);
 
@@ -20,10 +20,10 @@ public class InflationFactoryTests
         Assert.Equal(100m, descriptor.Inflows[0].Rate);
         Assert.Equal(inflationStart, descriptor.Inflows[0].EndTime);
 
-        Assert.Equal(110m, descriptor.Inflows[1].Rate);
+        Assert.Equal(110m, descriptor.Inflows[1].Rate, 4);
         Assert.Equal(next, descriptor.Inflows[1].EndTime);
 
-        Assert.Equal(110m, descriptor.Inflows[2].Rate);
+        Assert.Equal(110m, descriptor.Inflows[2].Rate, 4);
         Assert.Equal(DateTime.MaxValue, descriptor.Inflows[2].EndTime);
     }
 
@@ -35,7 +35,7 @@ public class InflationFactoryTests
         var next = new DateTime(2026, 1, 11);
         var following = new DateTime(2026, 1, 21);
 
-        var descriptor = new Inflation(inflationStart, [(0.10m, next), (0.20m, following)]).ApplyInflationPreciseMatching(
+        var descriptor = new Inflation(inflationStart, [(0.10m*Constants.daysPerYear/(decimal)(next-inflationStart).TotalDays, next), (0.20m*Constants.daysPerYear/(decimal)(following-next).TotalDays, following)]).ApplyInflationPreciseMatching(
             flowStart,
             100m);
 
@@ -44,10 +44,10 @@ public class InflationFactoryTests
         Assert.Equal(100m, descriptor.Inflows[0].Rate);
         Assert.Equal(next, descriptor.Inflows[0].EndTime);
 
-        Assert.Equal(120m, descriptor.Inflows[1].Rate);
+        Assert.Equal(120m, descriptor.Inflows[1].Rate, 4);
         Assert.Equal(following, descriptor.Inflows[1].EndTime);
 
-        Assert.Equal(120m, descriptor.Inflows[2].Rate);
+        Assert.Equal(120m, descriptor.Inflows[2].Rate, 4);
         Assert.Equal(DateTime.MaxValue, descriptor.Inflows[2].EndTime);
     }
 
@@ -59,7 +59,7 @@ public class InflationFactoryTests
         var firstEnd = new DateTime(2026, 1, 21);
         var secondEnd = new DateTime(2026, 1, 31);
 
-        var descriptor = new Inflation(inflationStart, [(0.10m, firstEnd), (0.20m, secondEnd)]).ApplyInflationPreciseMatching(
+        var descriptor = new Inflation(inflationStart, [(0.10m*Constants.daysPerYear/(decimal)(firstEnd-inflationStart).TotalDays, firstEnd), (0.20m*Constants.daysPerYear/(decimal)(secondEnd-firstEnd).TotalDays, secondEnd)]).ApplyInflationPreciseMatching(
             flowStart,
             100m);
 
@@ -68,13 +68,13 @@ public class InflationFactoryTests
         Assert.Equal(100m, descriptor.Inflows[0].Rate);
         Assert.Equal(inflationStart, descriptor.Inflows[0].EndTime);
 
-        Assert.Equal(110m, descriptor.Inflows[1].Rate);
+        Assert.Equal(110m, descriptor.Inflows[1].Rate, 4);
         Assert.Equal(firstEnd, descriptor.Inflows[1].EndTime);
 
-        Assert.Equal(132m, descriptor.Inflows[2].Rate);
+        Assert.Equal(132m, descriptor.Inflows[2].Rate, 4);
         Assert.Equal(secondEnd, descriptor.Inflows[2].EndTime);
 
-        Assert.Equal(132m, descriptor.Inflows[3].Rate);
+        Assert.Equal(132m, descriptor.Inflows[3].Rate, 4);
         Assert.Equal(DateTime.MaxValue, descriptor.Inflows[3].EndTime);
     }
 
@@ -86,7 +86,7 @@ public class InflationFactoryTests
         var pointAtFlowStart = flowStart;
         var next = new DateTime(2026, 1, 21);
 
-        var descriptor = new Inflation(inflationStart, [(0.10m, pointAtFlowStart), (0.20m, next)]).ApplyInflationPreciseMatching(
+        var descriptor = new Inflation(inflationStart, [(0.10m*Constants.daysPerYear/(decimal)(pointAtFlowStart-inflationStart).TotalDays, pointAtFlowStart), (0.20m*Constants.daysPerYear/(decimal)(next-pointAtFlowStart).TotalDays, next)]).ApplyInflationPreciseMatching(
             flowStart,
             100m);
 
@@ -107,7 +107,7 @@ public class InflationFactoryTests
         var firstHit = new DateTime(2026, 1, 11);
         var secondHit = new DateTime(2026, 1, 21);
 
-        var descriptor = new Inflation(inflationStart, [(0.10m, firstHit), (0.20m, secondHit)]).ApplyInflationPreciseMatching(
+        var descriptor = new Inflation(inflationStart, [(0.10m*Constants.daysPerYear/(decimal)(firstHit-inflationStart).TotalDays, firstHit), (0.20m*Constants.daysPerYear/(decimal)(secondHit-firstHit).TotalDays, secondHit)]).ApplyInflationPreciseMatching(
             flowStart,
             100m);
 
@@ -117,10 +117,10 @@ public class InflationFactoryTests
         Assert.Equal(100m, descriptor.Inflows[0].Rate);
         Assert.Equal(firstHit, descriptor.Inflows[0].EndTime);
 
-        Assert.Equal(120m, descriptor.Inflows[1].Rate);
+        Assert.Equal(120m, descriptor.Inflows[1].Rate, 4);
         Assert.Equal(secondHit, descriptor.Inflows[1].EndTime);
 
-        Assert.Equal(120m, descriptor.Inflows[2].Rate);
+        Assert.Equal(120m, descriptor.Inflows[2].Rate, 4);
         Assert.Equal(DateTime.MaxValue, descriptor.Inflows[2].EndTime);
     }
 
@@ -132,7 +132,7 @@ public class InflationFactoryTests
         var firstHit = new DateTime(2026, 1, 11);
         var secondHit = new DateTime(2026, 1, 21);
 
-        var descriptor = new Inflation(inflationStart, [(0.10m, firstHit), (0.20m, secondHit)]).ApplyInflationPreciseMatching(
+        var descriptor = new Inflation(inflationStart, [(0.10m*Constants.daysPerYear/(decimal)(firstHit-inflationStart).TotalDays, firstHit), (0.20m*Constants.daysPerYear/(decimal)(secondHit-firstHit).TotalDays, secondHit)]).ApplyInflationPreciseMatching(
             flowStart,
             100m);
 
@@ -144,10 +144,10 @@ public class InflationFactoryTests
         Assert.Equal(firstHit, descriptor.Inflows[0].EndTime);
 
         // After firstHit is reached, the next interval uses the next listed inflation value.
-        Assert.Equal(120m, descriptor.Inflows[1].Rate);
+        Assert.Equal(120m, descriptor.Inflows[1].Rate, 4);
         Assert.Equal(secondHit, descriptor.Inflows[1].EndTime);
 
-        Assert.Equal(120m, descriptor.Inflows[2].Rate);
+        Assert.Equal(120m, descriptor.Inflows[2].Rate, 4);
         Assert.Equal(DateTime.MaxValue, descriptor.Inflows[2].EndTime);
     }
 
@@ -174,7 +174,7 @@ public class InflationFactoryTests
         var flowStart = new DateTime(2026, 1, 21);
         var inflationStart = new DateTime(2026, 1, 1);
 
-        var descriptor = new Inflation(inflationStart, [(0.10m, new DateTime(2026, 1, 11)), (0.20m, flowStart)]).ApplyInflationPreciseMatching(
+        var descriptor = new Inflation(inflationStart, [(0.10m*Constants.daysPerYear/(decimal)(new DateTime(2026, 1, 11)-inflationStart).TotalDays, new DateTime(2026, 1, 11)), (0.20m*Constants.daysPerYear/(decimal)(flowStart-new DateTime(2026, 1, 11)).TotalDays, flowStart)]).ApplyInflationPreciseMatching(
             flowStart,
             100m);
 

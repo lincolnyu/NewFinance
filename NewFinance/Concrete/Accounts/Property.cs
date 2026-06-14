@@ -3,8 +3,8 @@ using NewFinance.Core;
 
 namespace NewFinance.Concrete.Accounts
 {
-    public class Property(PropertySchedule schedule, string name) : Account(name)
+    public class Property(string name) : Account(name)
     {
-        public PropertySchedule Schedule { get; } = schedule;
+        public PropertySchedule? Schedule { get; set; }
     }
 }

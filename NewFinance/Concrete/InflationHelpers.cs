@@ -26,7 +26,9 @@ namespace NewFinance.Concrete.Contracts
 
                 if (inflows.Count > 0)
                 {
-                    currentRate *= 1+inflationRate;
+                    var years = (decimal)((inflationRateExpiryTime - currentTime).TotalDays / 365.25);
+
+                    currentRate *= 1 + inflationRate * years;
                 }
 
                 inflows.Add((currentRate, inflationRateExpiryTime));
@@ -62,7 +64,9 @@ namespace NewFinance.Concrete.Contracts
                     continue;
                 }
 
-                cumulativeInflationFactor *= 1 + inflationRate;
+                var years = (decimal)((inflationRateExpiryTime - currentTime).TotalDays / 365.25);
+
+                cumulativeInflationFactor *= 1 + inflationRate * years;
 
                 if (inflationRateExpiryTime >= toTime)
                 {
