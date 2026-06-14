@@ -2,7 +2,7 @@ using NewFinance.Core;
 
 namespace NewFinance.Common
 {
-    public class CompoundFlow(DateTime startTime, decimal initialValue, decimal growthRate, TimeSpan timeStep, Account account) : AccountBindingContract(startTime, account)
+    public class CompoundFlow(DateTime startTime, decimal initialValue, decimal growthRate, TimeSpan timeStep, Account account, string name) : AccountBindingContract(startTime, account, name)
     {
         /// <summary>
         ///  The growth rate is the factor by which the cash account will be increased over each time step (negative for decrease). For example, if the growth rate is 0.05 and the time step is 1 month, then the account will be increased by 5% every month.

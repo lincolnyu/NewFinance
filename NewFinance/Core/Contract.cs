@@ -1,9 +1,11 @@
 namespace NewFinance.Core
 {
     // Event is basically a financial contract or series of financial events projected to occur over time.
-    public abstract class Contract(DateTime? startTime)
+    public abstract class Contract(DateTime? startTime, string name) : IHasName
     {
         public DateTime? StartTime { get; set; } = startTime;
+
+        public string Name { get; set; } = name;
 
         protected DateTime? LastProcessedTime { get; private set; }
 

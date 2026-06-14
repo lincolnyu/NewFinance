@@ -2,7 +2,7 @@ using NewFinance.Core;
 
 namespace NewFinance.Common
 {
-    public class SteadyFlow(SteadyFlowDescriptor descriptor, Account account) : AccountBindingContract(descriptor.StartTime, account)
+    public class SteadyFlow(SteadyFlowDescriptor descriptor, Account account, string name) : AccountBindingContract(descriptor.StartTime, account, name)
     {
         public int CurrentInflowIndex { get; private set; } = -1;
 
@@ -34,7 +34,7 @@ namespace NewFinance.Common
 
                 var inflow = rateInBucket * (decimal)executionTimeSpan.TotalDays; // pro-rate the inflow by the fraction of the time span that has passed in the current bucket
                 Account!.Balance += inflow;
-                InflowTracker.BumpAll(inflow);
+                InflowTracker.TrackIncrease(inflow);
 
                 if (currentTime == NextFlowChangeUpdateDate)
                 {

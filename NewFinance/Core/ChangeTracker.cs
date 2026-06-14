@@ -50,11 +50,11 @@ namespace NewFinance.Core
             }
         }
 
-        public void BumpAll(decimal change)
+        public void TrackIncrease(decimal increase)
         {
             foreach (var tracker in _trackers.Values)
             {
-                tracker.AddChange(change);
+                tracker.AddChange(increase);
             }
         }
     }   

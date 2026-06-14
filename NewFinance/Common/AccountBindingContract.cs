@@ -6,7 +6,7 @@ namespace NewFinance.Common
     {
         public Account? Account {get; }
 
-        public AccountBindingContract(DateTime startTime, Account account) : base(startTime)
+        public AccountBindingContract(DateTime startTime, Account account, string name) : base(startTime, name)
         {
             Account = account;
         }

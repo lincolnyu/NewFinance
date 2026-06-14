@@ -4,7 +4,7 @@ using NewFinance.Core;
 
 namespace NewFinance.Concrete.Contracts
 {
-    public class IndividualTax(TaxIndividual taxPayer, Account cashPaymentAccount) : Contract(null)
+    public class IndividualTax(TaxIndividual taxPayer, Account cashPaymentAccount) : Contract(null, $"Individual Tax for {taxPayer.Name}")
     {
         public TaxIndividual TaxPayer { get; } = taxPayer;
 
@@ -40,7 +40,7 @@ namespace NewFinance.Concrete.Contracts
 
                     var loan = TaxPayer.Liabilities.OfType<Loan>().First(loan => loan.Contract.Property == property);
 
-                    var netRentalIncome = propertySchedule.RentalNetIncome.InflowTracker[this].GetTrackedChangeAndReset();
+                    var netRentalIncome = propertySchedule.RentalInducedNetIncome.InflowTracker[this].GetTrackedChangeAndReset();
 
                     var interestPaid = loan.Contract.YearToDateInterestPaid * share;
 
@@ -64,8 +64,34 @@ namespace NewFinance.Concrete.Contracts
                 }
             }
 
-            decimal totalTaxPaiable = 0;
-            cashPaymentAccount.Balance -= totalTaxPaiable;
+            // Final tax workout
+            decimal totalTaxableIncome = totalIncome + propertyTaxableIncomes.Values.Sum() - totalDeduction;
+            decimal totalTaxPayable = totalTaxableIncome * (decimal)TaxRateFor(totalTaxableIncome);
+            cashPaymentAccount.Balance -= totalTaxPayable;
+        }
+
+        private double TaxRateFor(decimal taxableIncome)
+        {
+            if (taxableIncome <= 18200)
+            {
+                return 0;
+            }
+            else if (taxableIncome <= 45000)
+            {
+                return 0.16;
+            }
+            else if (taxableIncome <= 135000)
+            {
+                return 0.30;
+            }
+            else if (taxableIncome <= 180000)
+            {
+                return 0.37;
+            }
+            else
+            {
+                return 0.45;
+            }
         }
     }
 }

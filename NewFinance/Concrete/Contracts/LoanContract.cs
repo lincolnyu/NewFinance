@@ -22,7 +22,7 @@ namespace NewFinance.Concrete.Contracts
 
         public decimal YearToDateInterestPaid { get; private set; }
 
-        public LoanContract(Loan loanAccount, Property property, decimal loanAmount, decimal purchaseAdditionalCost) : base(property.Schedule.StartTime!.Value, loanAccount)
+        public LoanContract(Loan loanAccount, Property property, decimal loanAmount, decimal purchaseAdditionalCost) : base(property.Schedule.StartTime!.Value, loanAccount, $"Loan for {property.Name}")
         {
             Property = property;
             LoanAmount = loanAmount;
@@ -64,7 +64,7 @@ namespace NewFinance.Concrete.Contracts
 
         private void ApplyRepayment(TimeSpan time)
         {
-            var fractionOfYear = time.Days / 365.25m;
+            var fractionOfYear = time.Days / Constants.daysPerYear;
             var interest = AnnualInterestRate * fractionOfYear;
             var principalPayment = AnnualPrincipalPayment * fractionOfYear; // Assuming MonthlyPrincipalPayment is the payment for a full month.
             
