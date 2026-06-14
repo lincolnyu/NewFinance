@@ -2,13 +2,11 @@ using NewFinance.Core;
 
 namespace NewFinance.Common
 {
-    public class CompoundFlow(DateTime startTime, decimal initialValue, decimal growthRate, TimeSpan timeStep, Account account, string name) : AccountBindingContract(startTime, account, name)
+    public class CompoundFlow(DateTime startTime, decimal initialValue, Func<decimal, decimal> getGrowthRate, TimeSpan timeStep, Account account, string name) : AccountBindingContract(startTime, account, name)
     {
         /// <summary>
-        ///  The growth rate is the factor by which the cash account will be increased over each time step (negative for decrease). For example, if the growth rate is 0.05 and the time step is 1 month, then the account will be increased by 5% every month.
+        ///  The growth rate is the factor by which the cash account will be increased one yearly. For example, if the growth rate is 0.05, the cash account will be increased by 5% every year.
         /// </summary>
-        public decimal GrowthRate { get; } = growthRate;
-
         public TimeSpan Step { get; } = timeStep;
 
         public override void Reset(ContractExecutor executor)
@@ -35,7 +33,9 @@ namespace NewFinance.Common
                         break;
                     }
 
-                    Account!.Balance *= 1 + GrowthRate;
+                    var growthRate = getGrowthRate(Account!.Balance);
+                    var growthEachTimeStep = growthRate * Step.Days / Constants.DaysPerYear;
+                    Account!.Balance *= 1 + growthEachTimeStep;
                     
                     lastProcessedTime = newTime;
                 }

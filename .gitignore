@@ -2,3 +2,4 @@
 bin/
 obj/
 ProgramPrivate.cs
+*.csv

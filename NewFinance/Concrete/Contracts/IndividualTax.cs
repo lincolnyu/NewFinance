@@ -36,7 +36,7 @@ namespace NewFinance.Concrete.Contracts
                 if (asset is Property property)
                 {
                     var propertySchedule = property.Schedule!;
-                    (var _, var share) = property.Ownership.First(o => o.Owner == TaxPayer);
+                    (var _, var share) = property.Ownership.TryGetValue(TaxPayer, out var s) ? (TaxPayer, s) : (null, 0m);
 
                     var loan = TaxPayer.Liabilities.OfType<Loan>().FirstOrDefault(loan => loan.Contract.Property == property);
 

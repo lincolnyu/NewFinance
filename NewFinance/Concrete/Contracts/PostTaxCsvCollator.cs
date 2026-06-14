@@ -20,10 +20,10 @@ namespace NewFinance.Concrete.Contracts
                 Console.WriteLine($"{currentTime:yyyy-MM-dd}:");
                 foreach (var col in ColumnItems)
                 {
-                    if (col is Account account)
+                    if (col is IHasBalance balanceItem)
                     {
-                        Console.WriteLine($" '{account.Name}' balance = {account.Balance:0,000.00}");
-                        row.Add(account.Balance.ToString("0.00"));
+                        Console.WriteLine($" '{((IHasName)balanceItem).Name}' balance = {balanceItem.Balance:0,000.00}");
+                        row.Add(balanceItem.Balance.ToString("0.00"));
                     }
                     else if (col is ChangeTracker tracker)
                     {

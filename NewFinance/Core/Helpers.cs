@@ -5,7 +5,7 @@ namespace NewFinance.Core
         public static void AddAsset(this Entity entity, Account account, decimal ownershipFraction)
         {
             entity.Assets.Add(account);
-            account.Ownership.Add((entity, ownershipFraction));
+            account.Ownership.Add(entity, ownershipFraction);
         }
 
         public static DateTime NextAnniversayCrossing(this DateTime start, int month, int day)
