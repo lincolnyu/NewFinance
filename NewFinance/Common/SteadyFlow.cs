@@ -32,8 +32,7 @@ namespace NewFinance.Common
                 var executionTimeSpan = (currentTime - lastProcessedTime)!.Value;
 
                 var inflow = dailyRateInBucket * (decimal)executionTimeSpan.TotalDays; // pro-rate the inflow by the fraction of the time span that has passed in the current bucket
-                Account!.Balance += inflow;
-                InflowTracker.TrackChange(inflow);
+                ApplyInflow(inflow, executionTimeSpan);
 
                 if (currentTime == NextFlowChangeUpdateDate)
                 {
@@ -57,5 +56,11 @@ namespace NewFinance.Common
                 return (currentTime, NextFlowChangeUpdateDate);
             }
        }
+
+        protected virtual void ApplyInflow(decimal inflow, TimeSpan executionTimeSpan)
+        {
+            Account!.Balance += inflow;
+            InflowTracker.TrackChange(inflow);
+        }
     }
 }

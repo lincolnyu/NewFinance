@@ -76,10 +76,10 @@ namespace NewFinance.Concrete.Contracts
         private void ApplyRepayment(TimeSpan time)
         {
             var fractionOfYear = time.Days / Constants.DaysPerYear;
-            var principalPayment = AnnualPrincipalPayment * fractionOfYear; // Assuming MonthlyPrincipalPayment is the payment for a full month.
+            var principalPayment = Math.Max(0, Math.Min(-Account!.Balance, AnnualPrincipalPayment * fractionOfYear)); // Assuming MonthlyPrincipalPayment is the payment for a full month.
 
-            var interestApplied = (-Account!.Balance) - CashAccount.Balance * OffsetRatio; // Assuming the offset account reduces the interest applied on the loan balance.
-            var interest = AnnualInterestRate * fractionOfYear * interestApplied;
+            var interestApplicable = Math.Max(0, (-Account!.Balance) - CashAccount.Balance * OffsetRatio);  // Assuming the offset account reduces the interest applied on the loan balance.
+            var interest = AnnualInterestRate * fractionOfYear * interestApplicable;
             
             CashAccount.Balance -= interest + principalPayment;
             Account!.Balance += principalPayment;

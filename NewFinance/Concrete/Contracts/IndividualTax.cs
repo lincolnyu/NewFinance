@@ -72,6 +72,7 @@ namespace NewFinance.Concrete.Contracts
                         var saleProceeds =  property.SalesProceeds!.TotalChange;
                         var capitalGain = saleProceeds - property.PurchaseAdditionalCost - property.Schedule!.PurchasePrice;
                         netCapitalGain = capitalGain * share;
+                        property.SalesProceeds = null;
                     }
 
                     totalPropertyGain += netRentalTaxable + (netCapitalGain ?? 0);
@@ -87,11 +88,13 @@ namespace NewFinance.Concrete.Contracts
 
             decimal totalIncome = 0;
             decimal totalDeduction = 0;
+            decimal totalPaygWithheld = 0;
             foreach (var contract in TaxPayer.TaxableContracts)
             {
                 if (contract is Employment employment)
                 {
                     totalIncome += employment.InflowTracker[this].GetTrackedChangeAndReset();
+                    totalPaygWithheld += employment.PaygWithheldTracker[this].GetTrackedChangeAndReset();
                 }
                 else if (contract is Deductible expense)
                 {
@@ -102,8 +105,9 @@ namespace NewFinance.Concrete.Contracts
             // Final tax workout
             decimal totalTaxableIncome = Math.Max(0, totalIncome + totalPropertyGain - totalDeduction);
             decimal totalTaxPayable = CalculateResidentIncomeTax(totalTaxableIncome) + CalculateMedicareLevy(totalTaxableIncome);
-            cashPaymentAccount.Balance -= totalTaxPayable;
-            TaxPaid.TrackChange(totalTaxPayable);
+            decimal taxAssessmentBalance = totalTaxPayable - totalPaygWithheld;
+            cashPaymentAccount.Balance -= taxAssessmentBalance;
+            TaxPaid.TrackChange(taxAssessmentBalance);
         }
 
         private bool IsNegativeGearingAllowed(Property property, DateTime currentTime)
