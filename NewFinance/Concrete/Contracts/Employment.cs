@@ -3,8 +3,21 @@ using NewFinance.Core;
 
 namespace NewFinance.Concrete.Contracts
 {
-    public class Employment(SteadyFlowDescriptor descriptor, Account cashAccount) : SteadyFlow(descriptor, cashAccount, "Employment")
+    public class Employment : SteadyFlow
     {
+        private static readonly TimeSpan DefaultPaygWithholdingFrequency = TimeSpan.FromDays(14);
+
+        public Employment(SteadyFlowDescriptor descriptor, Account cashAccount) : base(descriptor, cashAccount, "Employment")
+        {
+            FlowBookingInterval = DefaultPaygWithholdingFrequency;
+        }
+
+        public TimeSpan PaygWithholdingFrequency
+        {
+            get => FlowBookingInterval!.Value;
+            set => FlowBookingInterval = value;
+        }
+
         public ChangeTracker PaygWithheldTracker { get; } = new ChangeTracker();
 
         public bool WithholdPayg { get; set; } = true;

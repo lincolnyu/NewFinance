@@ -10,6 +10,8 @@ namespace NewFinance.Common
 
         public ChangeTracker InflowTracker {get; private set;} = new ChangeTracker();
 
+        protected TimeSpan? FlowBookingInterval { get; set; }
+
         public override void Reset(ContractExecutor executor)
         {
             base.Reset(executor);
@@ -24,7 +26,7 @@ namespace NewFinance.Common
                 NextFlowChangeUpdateDate = descriptor.Inflows[CurrentInflowIndex].EndTime; // currentTime.NextAnniversayCrossing(descriptor.YearlyFlowChangeUpdateMonth, descriptor.YearlyFlowChangeUpdateDay);
                 InflowTracker.ResetAll();
                             
-                return (currentTime, NextFlowChangeUpdateDate);
+                return (currentTime, GetNextBookedTime(currentTime));
             }
             else
             {
@@ -53,7 +55,7 @@ namespace NewFinance.Common
                     System.Diagnostics.Debug.Assert(currentTime < NextFlowChangeUpdateDate);
                     // Keep booking the next raise update time until the current time reaches it.
                 }
-                return (currentTime, NextFlowChangeUpdateDate);
+                return (currentTime, GetNextBookedTime(currentTime));
             }
        }
 
@@ -61,6 +63,17 @@ namespace NewFinance.Common
         {
             Account!.Balance += inflow;
             InflowTracker.TrackChange(inflow);
+        }
+
+        private DateTime GetNextBookedTime(DateTime currentTime)
+        {
+            if (FlowBookingInterval is not { } interval)
+            {
+                return NextFlowChangeUpdateDate;
+            }
+
+            var nextFrequencyUpdateDate = currentTime.Add(interval);
+            return nextFrequencyUpdateDate < NextFlowChangeUpdateDate ? nextFrequencyUpdateDate : NextFlowChangeUpdateDate;
         }
     }
 }
