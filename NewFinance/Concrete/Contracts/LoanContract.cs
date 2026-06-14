@@ -68,19 +68,21 @@ namespace NewFinance.Concrete.Contracts
 
         private void ExecuteSettlement()
         {
-            var totalCost = Property.Balance + PurchaseAdditionalCost;
-            var cashRequired = totalCost - LoanAmount;
+            var totalFundsRequired = Property.Balance + PurchaseAdditionalCost;
+            var cashRequired = totalFundsRequired + LoanAmount;
             CashAccount.Balance -= cashRequired;
         }
 
         private void ApplyRepayment(TimeSpan time)
         {
             var fractionOfYear = time.Days / Constants.DaysPerYear;
-            var interest = AnnualInterestRate * fractionOfYear;
             var principalPayment = AnnualPrincipalPayment * fractionOfYear; // Assuming MonthlyPrincipalPayment is the payment for a full month.
+
+            var interestApplied = (-Account!.Balance) - CashAccount.Balance * OffsetRatio; // Assuming the offset account reduces the interest applied on the loan balance.
+            var interest = AnnualInterestRate * fractionOfYear * interestApplied;
             
             CashAccount.Balance -= interest + principalPayment;
-            Account!.Balance -= principalPayment;
+            Account!.Balance += principalPayment;
 
             PaidInterestTracker.TrackChange(interest);
         }

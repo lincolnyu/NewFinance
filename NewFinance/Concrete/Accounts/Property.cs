@@ -8,5 +8,9 @@ namespace NewFinance.Concrete.Accounts
         public PropertySchedule? Schedule { get; set; }
 
         public decimal PurchaseAdditionalCost { get; set; }
+
+        public ChangeTracker? SalesProceeds { get; set; }
+
+        public bool IsPurchasedAsNewBuild { get; set; } = false;
     }
 }

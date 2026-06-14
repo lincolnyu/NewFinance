@@ -10,7 +10,16 @@ namespace NewFinance.Concrete.Contracts
 
         public List<List<string>> Table { get; } = [];
 
-        public List<IHasName> ColumnItems {get;} = [];
+        public List<(object, string)> ColumnItems {get;} = [];
+
+        public string GetColumnName((object, string) col)
+        {
+            if (col.Item1 is IHasName hasName && !string.IsNullOrWhiteSpace(hasName.Name))
+            {
+                return hasName.Name;
+            }
+            return col.Item2;
+        }
 
         protected override (DateTime processedTime, DateTime bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
         {
@@ -20,15 +29,17 @@ namespace NewFinance.Concrete.Contracts
                 Console.WriteLine($"{currentTime:yyyy-MM-dd}:");
                 foreach (var col in ColumnItems)
                 {
-                    if (col is IHasBalance balanceItem)
+                    if (col.Item1 is IHasBalance balanceItem)
                     {
-                        Console.WriteLine($" '{((IHasName)balanceItem).Name}' balance = {balanceItem.Balance:0,000.00}");
+                        var name = GetColumnName(col);
+                        Console.WriteLine($" '{name}' balance = {balanceItem.Balance:0,000.00}");
                         row.Add(balanceItem.Balance.ToString("0.00"));
                     }
-                    else if (col is ChangeTracker tracker)
+                    else if (col.Item1 is ChangeTracker tracker)
                     {
                         var val = tracker["PostTaxCsvCollator"].GetTrackedChangeAndReset(); 
-                        Console.WriteLine($" '{tracker.Name}' change = {val:0,000.00}");
+                        var name = GetColumnName(col);
+                        Console.WriteLine($" '{name}' change = {val:0,000.00}");
                         row.Add(val.ToString("0.00"));
                     }
                 }

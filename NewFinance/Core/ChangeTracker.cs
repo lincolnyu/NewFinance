@@ -3,9 +3,9 @@ namespace NewFinance.Core
 {
     public class ChangeTracker : IHasName
     {
-        public class Subscription
+        public class Subscription(decimal initialChange)
         {
-            public decimal TrackedChange { get; private set; }
+            public decimal TrackedChange { get; private set; } = initialChange;
 
             public void AddChange(decimal change)
             {
@@ -22,16 +22,27 @@ namespace NewFinance.Core
 
         public string Name {get;set;} = "";
 
+        public decimal TotalChange { get; private set; } = 0;
+
+
         public Subscription this[object subscriber] => GetOrCreateTracker(subscriber);
 
         public Subscription GetOrCreateTracker(object subscriber)
         {
             if (!_trackers.TryGetValue(subscriber, out var tracker))
             {
-                tracker = new Subscription();
+                tracker = new Subscription(TotalChange);
                 _trackers[subscriber] = tracker;
             }
-            return _trackers[subscriber];
+            return tracker;
+        }
+
+        public void CreateTracker(object subscriber, bool trackExistingChange)
+        {
+            if (!_trackers.ContainsKey(subscriber))
+            {
+                _trackers[subscriber] = new Subscription(trackExistingChange ? TotalChange : 0);
+            }
         }
 
         public void RemoveTracker(object subscriber)
@@ -54,6 +65,7 @@ namespace NewFinance.Core
 
         public void TrackChange(decimal increase)
         {
+            TotalChange += increase;
             foreach (var tracker in _trackers.Values)
             {
                 tracker.AddChange(increase);
