@@ -68,7 +68,7 @@ namespace NewFinance.Concrete.Contracts
         public static decimal GetRelativeInflationFactor(this Inflation inflation, DateTime fromTime, DateTime toTime)
         {
             decimal cumulativeInflationFactor = 1m;
-            if (toTime <= inflation.StartTime)
+            if (toTime <= inflation.StartTime || toTime == fromTime)
             {
                 return cumulativeInflationFactor;
             }
