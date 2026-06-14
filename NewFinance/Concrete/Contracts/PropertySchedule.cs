@@ -26,7 +26,8 @@ namespace NewFinance.Concrete.Contracts
             var bookedTime = executor.ExecuteContracts([PropertyValue, RentalInducedNetIncome], currentTime);
 
             var levyInflation = LevyAndRatesInflation.GetRelativeInflationFactor(purchaseTime, currentTime);
-            var govFees = InitialTotalLevyAndRatesAnnualRate * levyInflation * (currentTime - lastProcessedTime!.Value).Days / Constants.daysPerYear;
+            var lastTime = lastProcessedTime ?? purchaseTime;
+            var govFees = InitialTotalLevyAndRatesAnnualRate * levyInflation * (currentTime - lastTime).Days / Constants.daysPerYear;
             rentalIncomeAccount.Balance -= govFees;
             ExtraFeesTracker.TrackIncrease(-govFees);
 

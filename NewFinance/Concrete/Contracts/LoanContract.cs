@@ -22,7 +22,7 @@ namespace NewFinance.Concrete.Contracts
 
         public decimal YearToDateInterestPaid { get; private set; }
 
-        public LoanContract(Loan loanAccount, Property property, decimal loanAmount, decimal purchaseAdditionalCost) : base(property.Schedule.StartTime!.Value, loanAccount, $"Loan for {property.Name}")
+        public LoanContract(Loan loanAccount, Property property, decimal loanAmount, decimal purchaseAdditionalCost) : base(property.Schedule!.StartTime!.Value, loanAccount, $"Loan for {property.Name}")
         {
             Property = property;
             LoanAmount = loanAmount;

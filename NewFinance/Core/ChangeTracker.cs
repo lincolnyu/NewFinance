@@ -1,7 +1,7 @@
 
 namespace NewFinance.Core
 {
-    public class ChangeTracker
+    public class ChangeTracker : IHasName
     {
         public class Subscription
         {
@@ -19,6 +19,8 @@ namespace NewFinance.Core
         }
 
         private readonly Dictionary<object, Subscription> _trackers = new Dictionary<object, Subscription>();
+
+        public string Name {get;set;} = "";
 
         public Subscription this[object subscriber] => GetOrCreateTracker(subscriber);
 
