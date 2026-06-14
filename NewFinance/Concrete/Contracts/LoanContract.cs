@@ -64,7 +64,7 @@ namespace NewFinance.Concrete.Contracts
 
         private void ApplyRepayment(TimeSpan time)
         {
-            var fractionOfYear = time.Days / Constants.daysPerYear;
+            var fractionOfYear = time.Days / Constants.DaysPerYear;
             var interest = AnnualInterestRate * fractionOfYear;
             var principalPayment = AnnualPrincipalPayment * fractionOfYear; // Assuming MonthlyPrincipalPayment is the payment for a full month.
             

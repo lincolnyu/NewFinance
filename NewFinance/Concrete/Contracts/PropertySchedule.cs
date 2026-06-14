@@ -6,7 +6,7 @@ namespace NewFinance.Concrete.Contracts
 {
     public class PropertySchedule(Property property, DateTime purchaseTime, decimal purchasePrice, decimal growthRate, SteadyFlowDescriptor rentalNetInFlowDescriptor, Account rentalIncomeAccount) : Contract(purchaseTime, $"Property Schedule for {property.Name}")
     {
-        public CompoundFlow PropertyValue { get; private set;} = new CompoundFlow(purchaseTime, purchasePrice, growthRate, TimeSpan.FromDays(365.25), property, $"Property Value for {property.Name}");
+        public CompoundFlow PropertyValue { get; private set;} = new CompoundFlow(purchaseTime, purchasePrice, growthRate, TimeSpan.FromDays((double)Constants.DaysPerYear), property, $"Property Value for {property.Name}");
 
         // Rent minus the fees proportional to rent (agent fees etc.)
         public SteadyFlow RentalInducedNetIncome { get; private set;} = new SteadyFlow(rentalNetInFlowDescriptor, rentalIncomeAccount, $"Rental Net Income for {property.Name}");
@@ -27,7 +27,7 @@ namespace NewFinance.Concrete.Contracts
 
             var levyInflation = LevyAndRatesInflation.GetRelativeInflationFactor(purchaseTime, currentTime);
             var lastTime = lastProcessedTime ?? purchaseTime;
-            var govFees = InitialTotalLevyAndRatesAnnualRate * levyInflation * (currentTime - lastTime).Days / Constants.daysPerYear;
+            var govFees = InitialTotalLevyAndRatesAnnualRate * levyInflation * (currentTime - lastTime).Days / Constants.DaysPerYear;
             rentalIncomeAccount.Balance -= govFees;
             ExtraFeesTracker.TrackIncrease(-govFees);
 

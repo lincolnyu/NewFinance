@@ -38,6 +38,11 @@ namespace NewFinance.Concrete.Contracts
 
             foreach (var reviewDate in reviewDates)
             {
+                if (reviewDate == DateTime.MaxValue)
+                {
+                    break;
+                }
+
                 if (reviewDate <= currentStartDate)
                 {
                     continue;
@@ -50,6 +55,10 @@ namespace NewFinance.Concrete.Contracts
 
                 currentStartDate = reviewDate;
             }
+
+            var finalInflationFactor = GetRelativeInflationFactor(inflation, lastReviewDate, currentStartDate);
+            currentRate *= finalInflationFactor;
+            inflows.Add((currentRate, DateTime.MaxValue));
 
             return new SteadyFlowDescriptor(flowStartTime, inflows);
         }
@@ -82,7 +91,7 @@ namespace NewFinance.Concrete.Contracts
 
                 var finishing = toTime <= inflationRateExpiryTime;
 
-                var years = (decimal)(((finishing? toTime : inflationRateExpiryTime) - currentTime).TotalDays / 365.25);
+                var years = (decimal)(((finishing? toTime : inflationRateExpiryTime) - currentTime).TotalDays / (double)Constants.DaysPerYear);
 
                 cumulativeInflationFactor *= (decimal)Math.Pow((double)(1 + inflationRate), (double)years);
                 if (finishing)
