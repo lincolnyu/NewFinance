@@ -101,7 +101,7 @@ namespace NewFinance.Concrete.Contracts
 
             // Final tax workout
             decimal totalTaxableIncome = Math.Max(0, totalIncome + totalPropertyGain - totalDeduction);
-            decimal totalTaxPayable = totalTaxableIncome * (decimal)TaxRateFor(totalTaxableIncome);
+            decimal totalTaxPayable = CalculateResidentIncomeTax(totalTaxableIncome) + CalculateMedicareLevy(totalTaxableIncome);
             cashPaymentAccount.Balance -= totalTaxPayable;
             TaxPaid.TrackChange(totalTaxPayable);
         }
@@ -129,28 +129,50 @@ namespace NewFinance.Concrete.Contracts
             }
         }
 
-        private double TaxRateFor(decimal taxableIncome)
+        internal static decimal CalculateResidentIncomeTax(decimal taxableIncome)
         {
-            if (taxableIncome <= 18200)
+            taxableIncome = Math.Max(0, taxableIncome);
+
+            if (taxableIncome <= 18_200m)
             {
-                return 0;
+                return 0m;
             }
-            else if (taxableIncome <= 45000)
+
+            if (taxableIncome <= 45_000m)
             {
-                return 0.16;
+                return (taxableIncome - 18_200m) * 0.16m;
             }
-            else if (taxableIncome <= 135000)
+
+            if (taxableIncome <= 135_000m)
             {
-                return 0.30;
+                return 4_288m + (taxableIncome - 45_000m) * 0.30m;
             }
-            else if (taxableIncome <= 180000)
+
+            if (taxableIncome <= 190_000m)
             {
-                return 0.37;
+                return 31_288m + (taxableIncome - 135_000m) * 0.37m;
             }
-            else
+
+            return 51_638m + (taxableIncome - 190_000m) * 0.45m;
+        }
+
+        internal static decimal CalculateMedicareLevy(decimal taxableIncome)
+        {
+            taxableIncome = Math.Max(0, taxableIncome);
+
+            const decimal lowerThreshold = 26_000m;
+            const decimal fullLevyRate = 0.02m;
+            const decimal phaseInRate = 0.10m;
+
+            if (taxableIncome <= lowerThreshold)
             {
-                return 0.45;
+                return 0m;
             }
+
+            var fullLevy = taxableIncome * fullLevyRate;
+            var phaseInLevy = (taxableIncome - lowerThreshold) * phaseInRate;
+
+            return Math.Min(fullLevy, phaseInLevy);
         }
     }
 }
