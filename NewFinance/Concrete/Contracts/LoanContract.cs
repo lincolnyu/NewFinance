@@ -45,7 +45,7 @@ namespace NewFinance.Concrete.Contracts
                 {
                     ExecuteSettlement();
                 }
-                Account!.Balance = LoanAmount;
+                Account!.Balance = -LoanAmount;
 
                 return (currentTime, currentTime.AddMonths(1));
             }
@@ -69,7 +69,7 @@ namespace NewFinance.Concrete.Contracts
         private void ExecuteSettlement()
         {
             var totalFundsRequired = Property.Balance + PurchaseAdditionalCost;
-            var cashRequired = totalFundsRequired + LoanAmount;
+            var cashRequired = totalFundsRequired - LoanAmount;
             CashAccount.Balance -= cashRequired;
         }
 

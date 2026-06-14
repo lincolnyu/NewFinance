@@ -15,6 +15,8 @@ namespace NewFinance.Concrete.Contracts
         public override void Reset(ContractExecutor executor)
         {
             base.Reset(executor);
+
+            _rentalLossPool = 0m;
         }
 
         protected override (DateTime processedTime, DateTime bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
@@ -49,7 +51,7 @@ namespace NewFinance.Concrete.Contracts
 
                     var loan = TaxPayer.Liabilities.OfType<Loan>().FirstOrDefault(loan => loan.Contract!.Property == property);
 
-                    var netRentalIncome = propertySchedule.RentalInducedNetIncome?.InflowTracker[this].GetTrackedChangeAndReset() ?? 0m;
+                    var netRentalIncome = propertySchedule.RentalInducedNetIncome?.InflowTracker[this].GetTrackedChangeAndReset() * share ?? 0m;
 
                     var interestPaid = loan?.Contract!.PaidInterestTracker[this].GetTrackedChangeAndReset() * share ?? 0m;
 
@@ -68,7 +70,7 @@ namespace NewFinance.Concrete.Contracts
                     if (property.SalesProceeds is not null) // just sold
                     {
                         var saleProceeds =  property.SalesProceeds!.TotalChange;
-                        var capitalGain = saleProceeds - property.PurchaseAdditionalCost;
+                        var capitalGain = saleProceeds - property.PurchaseAdditionalCost - property.Schedule!.PurchasePrice;
                         netCapitalGain = capitalGain * share;
                     }
 
@@ -98,7 +100,7 @@ namespace NewFinance.Concrete.Contracts
             }
 
             // Final tax workout
-            decimal totalTaxableIncome = totalIncome + totalPropertyGain - totalDeduction;
+            decimal totalTaxableIncome = Math.Max(0, totalIncome + totalPropertyGain - totalDeduction);
             decimal totalTaxPayable = totalTaxableIncome * (decimal)TaxRateFor(totalTaxableIncome);
             cashPaymentAccount.Balance -= totalTaxPayable;
             TaxPaid.TrackChange(totalTaxPayable);

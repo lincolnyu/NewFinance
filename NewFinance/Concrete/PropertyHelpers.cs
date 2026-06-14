@@ -39,7 +39,7 @@ namespace NewFinance.Concrete.Contracts
         {
             var loan = new Loan($"Loan for {property.Name}");
 
-            var loanContract = new LoanContract(loan, property, -loanAmount, alreadySettled)
+            var loanContract = new LoanContract(loan, property, loanAmount, alreadySettled)
             {
                 CashAccount = cashAccount,
                 OffsetRatio = offsetRatio,

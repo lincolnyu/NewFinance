@@ -22,13 +22,13 @@ namespace NewFinance.Concrete.Contracts
             return ApplyInflation(inflation, flowStartTime, initialRate, reviewDates);
         }
 
-        public static SteadyFlowDescriptor ApplyInflation(this Inflation inflation, DateTime flowStartTime, decimal initialRate, IEnumerable<DateTime> reviewDates)
+        public static SteadyFlowDescriptor ApplyInflation(this Inflation inflation, DateTime flowStartTime, decimal initialDailyRate, IEnumerable<DateTime> reviewDates)
         {
             List<(decimal Rate, DateTime EndTime)> inflows = [];
 
             DateTime lastReviewDate = flowStartTime;
             DateTime currentStartDate = flowStartTime;
-            var currentRate = initialRate;
+            var currentRate = initialDailyRate;
 
             if (currentStartDate < inflation.StartTime)
             {

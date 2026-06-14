@@ -64,7 +64,7 @@ public class InflationTests
         Assert.Equal((100m, inflationStart), descriptor.Inflows[0]);
         Assert.Equal((100m, firstReview), descriptor.Inflows[1]);
         Assert.Equal(DateTime.MaxValue, descriptor.Inflows[2].EndTime);
-        AssertClose(110m, descriptor.Inflows[2].Rate);
+        AssertClose(110m, descriptor.Inflows[2].DailyRate);
     }
 
     [Fact]
@@ -79,7 +79,7 @@ public class InflationTests
         Assert.Equal(2, descriptor.Inflows.Count);
         Assert.Equal((100m, firstReview), descriptor.Inflows[0]);
         Assert.Equal(DateTime.MaxValue, descriptor.Inflows[1].EndTime);
-        AssertClose(110m, descriptor.Inflows[1].Rate);
+        AssertClose(110m, descriptor.Inflows[1].DailyRate);
     }
 
     [Fact]
@@ -98,7 +98,7 @@ public class InflationTests
         Assert.Equal(2, descriptor.Inflows.Count);
         Assert.Equal((100m, firstReview), descriptor.Inflows[0]);
         Assert.Equal(DateTime.MaxValue, descriptor.Inflows[1].EndTime);
-        AssertClose(expectedRate, descriptor.Inflows[1].Rate);
+        AssertClose(expectedRate, descriptor.Inflows[1].DailyRate);
     }
 
     private static void AssertClose(decimal expected, decimal actual)

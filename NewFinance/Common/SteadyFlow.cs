@@ -28,11 +28,10 @@ namespace NewFinance.Common
             }
             else
             {
-                // The yearly inflow is the amount by which the cash account will be increased over a year (negative for decrease).
-                var rateInBucket = descriptor.Inflows[CurrentInflowIndex].Rate;
+                var dailyRateInBucket = descriptor.Inflows[CurrentInflowIndex].DailyRate;
                 var executionTimeSpan = (currentTime - lastProcessedTime)!.Value;
 
-                var inflow = rateInBucket * (decimal)executionTimeSpan.TotalDays; // pro-rate the inflow by the fraction of the time span that has passed in the current bucket
+                var inflow = dailyRateInBucket * (decimal)executionTimeSpan.TotalDays; // pro-rate the inflow by the fraction of the time span that has passed in the current bucket
                 Account!.Balance += inflow;
                 InflowTracker.TrackChange(inflow);
 
