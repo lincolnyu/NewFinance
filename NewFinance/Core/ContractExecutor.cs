@@ -32,6 +32,8 @@ namespace NewFinance.Core
                     minNextTime = NextForcedTime.Value;
                 }
             }
+
+            System.Diagnostics.Debug.Assert(minNextTime > currentTime, $"Next execution time {minNextTime} should be greater than current time {currentTime}");
     
             return minNextTime;
         }

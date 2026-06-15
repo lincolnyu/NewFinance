@@ -24,10 +24,7 @@ namespace NewFinance.Common
 
         public void LoadExecutor(ContractExecutor executor)
         {
-            foreach (var contract in OrderedContracts)
-            {
-                executor.Contracts.Add(contract);
-            }
+            executor.Contracts.AddRange(OrderedContracts);
         }
     }
 }

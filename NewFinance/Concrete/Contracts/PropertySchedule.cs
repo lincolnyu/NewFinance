@@ -46,11 +46,6 @@ namespace NewFinance.Concrete.Contracts
                 Sale?.Action();
             }
 
-            if (Sale?.Time < bookedTime)
-            {
-                bookedTime = Sale.Value.Time;
-            }
-
             return (currentTime, bookedTime);
         }
     }

@@ -1,6 +1,4 @@
 using NewFinance.Common;
-using NewFinance.Concrete.Accounts;
-using NewFinance.Core;
 
 namespace NewFinance.Concrete.Contracts
 {

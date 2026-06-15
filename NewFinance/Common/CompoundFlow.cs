@@ -28,7 +28,8 @@ namespace NewFinance.Common
                 while (true)
                 {
                     newTime = lastProcessedTime!.Value.Add(Step);
-                    if (newTime > currentTime)
+
+                    if (newTime >= currentTime.AddDays(1))  // To avoid booked time to be to close to the current.
                     {
                         break;
                     }

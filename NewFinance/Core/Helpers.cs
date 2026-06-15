@@ -57,14 +57,17 @@ namespace NewFinance.Core
             return time.Month == 6 && time.Day == 30;
         }
 
+
+        public static DateTime CurrentBOEF(this DateTime time)
+        {
+            var boef = new DateTime(time.Month > 6 || (time.Month == 6 && time.Day == 30) ? time.Year : time.Year - 1, 7, 1);
+            return boef;
+        }
+
         public static DateTime NextEOFY(this DateTime time)
         {
-            var nextEOFY = new DateTime(time.Year, 6, 30);
-            if (nextEOFY <= time)
-            {
-                nextEOFY = nextEOFY.AddYears(1);
-            }
-            return nextEOFY;
+            var nextEofy = new DateTime(time.Month > 6 || (time.Month == 6 && time.Day == 30) ? time.Year + 1 : time.Year, 6, 30);
+            return nextEofy;
         }
     }
 }

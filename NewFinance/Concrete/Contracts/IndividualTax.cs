@@ -105,10 +105,12 @@ namespace NewFinance.Concrete.Contracts
 
             // Final tax workout
             decimal totalTaxableIncome = Math.Max(0, totalIncome + totalPropertyGain - totalDeduction);
-            decimal totalTaxPayable = CalculateResidentIncomeTax(totalTaxableIncome) +  new MedicareLevyRules().Calculate(totalTaxableIncome, TaxPayer);
+            decimal residentialIncome = CalculateResidentIncomeTax(totalTaxableIncome);
+            decimal medicareLevy = new MedicareLevyRules().Calculate(totalTaxableIncome, TaxPayer);
+            decimal totalTaxPayable = residentialIncome +  medicareLevy;
             decimal taxAssessmentBalance = totalTaxPayable - totalPaygWithheld;
             cashPaymentAccount.Balance -= taxAssessmentBalance;
-            TaxPaid.TrackChange(taxAssessmentBalance);
+            TaxPaid.TrackChange(totalTaxPayable);
         }
 
         private bool IsNegativeGearingAllowed(Property property, DateTime currentTime)

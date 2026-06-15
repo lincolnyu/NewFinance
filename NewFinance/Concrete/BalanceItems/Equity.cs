@@ -11,15 +11,15 @@ namespace NewFinance.Concrete
         private decimal CalculateBalance()
         {
             var equity = 0m;
-            foreach(var asset in entity.Assets.Concat(entity.Liabilities))
+            foreach(var account in entity.Assets.Concat(entity.Liabilities))
             {
-                if (asset.Ownership.TryGetValue(entity, out var share))
+                if (account.Ownership.TryGetValue(entity, out var share))
                 {
-                    equity += asset.Balance * share;
+                    equity += account.Balance * share;
                 }
                 else
                 {
-                    equity += asset.Balance;
+                    equity += account.Balance;
                 }
             }
             return equity;
