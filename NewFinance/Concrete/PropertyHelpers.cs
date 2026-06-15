@@ -35,11 +35,26 @@ namespace NewFinance.Concrete.Contracts
             return property;
         }
 
+        public static Loan CreatePersonalLoan(string name, DateTime startTime, decimal loanAmount, Account cashAccount, decimal? principleRepaymentTotalYears, decimal annualInterestRate, bool alreadySettled)
+        {
+            var loan = new Loan($"Personal Loan {name}");
+
+            var loanContract = new LoanContract(loan, null!, startTime, loanAmount, alreadySettled)
+            {
+                CashAccount = cashAccount,
+                AnnualPrincipalPayment = principleRepaymentTotalYears.HasValue? loanAmount / principleRepaymentTotalYears.Value : 0,
+                AnnualInterestRate = annualInterestRate
+            };
+            loan.Contract = loanContract;
+
+            return loan;
+        }
+
         public static Loan CreateLoan(Property property, decimal loanAmount, Account cashAccount, decimal offsetRatio, decimal? principalRepaymentTotalYears, decimal annualInterestRate, bool alreadySettled)
         {
             var loan = new Loan($"Loan for {property.Name}");
 
-            var loanContract = new LoanContract(loan, property, loanAmount, alreadySettled)
+            var loanContract = new LoanContract(loan, property, null, loanAmount, alreadySettled)
             {
                 CashAccount = cashAccount,
                 OffsetRatio = offsetRatio,

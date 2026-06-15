@@ -6,14 +6,16 @@ namespace NewFinance.Concrete.Contracts
 {
     public class LoanContract : AccountBindingContract
     {
-        public Property Property { get; private set; }
+        public Property? Property { get; private set; }
 
         public required Account CashAccount { get; set; }
 
         public decimal LoanAmount { get; set; }
 
         public decimal PurchaseAdditionalCost{ get; set; }
+
         public bool AlreadySettled { get; }
+
         public decimal OffsetRatio { get; set; }
 
         public decimal AnnualPrincipalPayment { get; set; }
@@ -22,11 +24,12 @@ namespace NewFinance.Concrete.Contracts
 
         public ChangeTracker PaidInterestTracker { get; } = new ChangeTracker();
 
-        public LoanContract(Loan loanAccount, Property property, decimal loanAmount, bool alreadySettled) : base(property.Schedule!.StartTime!.Value, loanAccount, $"Loan for {property.Name}")
+        public LoanContract(Loan loanAccount, Property? property, DateTime? startTime, decimal loanAmount, bool alreadySettled) : base(startTime?? property!.Schedule!.StartTime!.Value, loanAccount, 
+            string.IsNullOrEmpty(loanAccount.Name) ? (property is null? "Loan" : $"Loan for {property?.Name}")  : loanAccount.Name)
         {
             Property = property;
             LoanAmount = loanAmount;
-            PurchaseAdditionalCost = property.PurchaseAdditionalCost;
+            PurchaseAdditionalCost = property?.PurchaseAdditionalCost ?? 0;
             AlreadySettled = alreadySettled;
         }
 
@@ -68,7 +71,7 @@ namespace NewFinance.Concrete.Contracts
 
         private void ExecuteSettlement()
         {
-            var totalFundsRequired = Property.Balance + PurchaseAdditionalCost;
+            var totalFundsRequired = Property?.Balance??0 + PurchaseAdditionalCost;
             var cashRequired = totalFundsRequired - LoanAmount;
             CashAccount.Balance -= cashRequired;
         }
