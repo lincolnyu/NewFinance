@@ -1,4 +1,6 @@
 using NewFinance.Common;
+using NewFinance.Concrete.Entities;
+using NewFinance.Concrete.Rules;
 using NewFinance.Core;
 
 namespace NewFinance.Concrete.Contracts
@@ -7,9 +9,10 @@ namespace NewFinance.Concrete.Contracts
     {
         private static readonly TimeSpan DefaultPaygWithholdingFrequency = TimeSpan.FromDays(14);
 
-        public Employment(SteadyFlowDescriptor descriptor, Account cashAccount) : base(descriptor, cashAccount, "Employment")
+        public Employment(SteadyFlowDescriptor descriptor, TaxIndividual individual, Account cashAccount) : base(descriptor, cashAccount, "Employment")
         {
             FlowBookingInterval = DefaultPaygWithholdingFrequency;
+            Individual = individual;
         }
 
         public TimeSpan PaygWithholdingFrequency
@@ -21,6 +24,7 @@ namespace NewFinance.Concrete.Contracts
         public ChangeTracker PaygWithheldTracker { get; } = new ChangeTracker();
 
         public bool WithholdPayg { get; set; } = true;
+        public TaxIndividual Individual { get; }
 
         public override void Reset(ContractExecutor executor)
         {
@@ -37,7 +41,7 @@ namespace NewFinance.Concrete.Contracts
             PaygWithheldTracker.TrackChange(paygWithheld);
         }
 
-        internal static decimal EstimatePaygWithholding(decimal grossIncome, TimeSpan period)
+        internal decimal EstimatePaygWithholding(decimal grossIncome, TimeSpan period)
         {
             if (grossIncome <= 0 || period.TotalDays <= 0)
             {
@@ -46,7 +50,7 @@ namespace NewFinance.Concrete.Contracts
 
             var fractionOfYear = (decimal)(period.TotalDays / (double)Constants.DaysPerYear);
             var annualisedIncome = grossIncome / fractionOfYear;
-            var annualTax = IndividualTax.CalculateResidentIncomeTax(annualisedIncome) + IndividualTax.CalculateMedicareLevy(annualisedIncome);
+            var annualTax = IndividualTax.CalculateResidentIncomeTax(annualisedIncome) +  new MedicareLevyRules().Calculate(annualisedIncome, Individual);
 
             return annualTax * fractionOfYear;
         }

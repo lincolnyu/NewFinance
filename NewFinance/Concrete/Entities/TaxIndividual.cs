@@ -15,5 +15,7 @@ namespace NewFinance.Concrete.Entities
         ///   - super contributions
         /// </summary>
         public List<Contract> TaxableContracts { get; } = new List<Contract>();
+
+        public Family? Family { get; set; }
     }
 }

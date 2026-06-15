@@ -1,5 +1,6 @@
 using NewFinance.Concrete.Accounts;
 using NewFinance.Concrete.Entities;
+using NewFinance.Concrete.Rules;
 using NewFinance.Core;
 
 namespace NewFinance.Concrete.Contracts
@@ -104,7 +105,7 @@ namespace NewFinance.Concrete.Contracts
 
             // Final tax workout
             decimal totalTaxableIncome = Math.Max(0, totalIncome + totalPropertyGain - totalDeduction);
-            decimal totalTaxPayable = CalculateResidentIncomeTax(totalTaxableIncome) + CalculateMedicareLevy(totalTaxableIncome);
+            decimal totalTaxPayable = CalculateResidentIncomeTax(totalTaxableIncome) +  new MedicareLevyRules().Calculate(totalTaxableIncome, TaxPayer);
             decimal taxAssessmentBalance = totalTaxPayable - totalPaygWithheld;
             cashPaymentAccount.Balance -= taxAssessmentBalance;
             TaxPaid.TrackChange(taxAssessmentBalance);
@@ -133,6 +134,7 @@ namespace NewFinance.Concrete.Contracts
             }
         }
 
+
         internal static decimal CalculateResidentIncomeTax(decimal taxableIncome)
         {
             taxableIncome = Math.Max(0, taxableIncome);
@@ -158,25 +160,6 @@ namespace NewFinance.Concrete.Contracts
             }
 
             return 51_638m + (taxableIncome - 190_000m) * 0.45m;
-        }
-
-        internal static decimal CalculateMedicareLevy(decimal taxableIncome)
-        {
-            taxableIncome = Math.Max(0, taxableIncome);
-
-            const decimal lowerThreshold = 26_000m;
-            const decimal fullLevyRate = 0.02m;
-            const decimal phaseInRate = 0.10m;
-
-            if (taxableIncome <= lowerThreshold)
-            {
-                return 0m;
-            }
-
-            var fullLevy = taxableIncome * fullLevyRate;
-            var phaseInLevy = (taxableIncome - lowerThreshold) * phaseInRate;
-
-            return Math.Min(fullLevy, phaseInLevy);
         }
     }
 }
