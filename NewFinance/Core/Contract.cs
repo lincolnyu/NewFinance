@@ -11,7 +11,9 @@ namespace NewFinance.Core
 
         protected DateTime? LastBookedTime {get; private set;}
 
-        public virtual DateTime Execute(ContractExecutor executor, DateTime currentTime)
+        public bool IsCompleted { get; private set; }
+
+        public virtual DateTime? Execute(ContractExecutor executor, DateTime currentTime)
         {
             // Keep booking start time until the current time reaches the start time, then execute the contract for the first time.
             // This guarantees that the contract will be executed at the start time if specified.
@@ -21,11 +23,17 @@ namespace NewFinance.Core
             {
                 return StartTime.Value;
             }
+            if (IsCompleted)
+            {
+                return null;
+            }
 
             System.Diagnostics.Debug.Assert(LastBookedTime == null || currentTime <= LastBookedTime);
 
             // Processed time may not necessarily be the current time. It is the time that has been processed in the currennt execution so the next execution will know where to start.
             var (processedTime, bookedTime) = Execute(executor,  LastProcessedTime, LastBookedTime, currentTime);
+
+            IsCompleted = bookedTime == null;
 
             LastBookedTime = bookedTime;
             LastProcessedTime = processedTime;
@@ -37,8 +45,9 @@ namespace NewFinance.Core
         {
             LastProcessedTime = null;
             LastBookedTime = null;
+            IsCompleted = false;
         }
 
-        protected abstract (DateTime processedTime, DateTime bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime);
+        protected abstract (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime);
     }
 }

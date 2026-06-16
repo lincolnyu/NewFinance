@@ -7,7 +7,7 @@ namespace NewFinance.Concrete.Contracts
 {
     public static class PropertyHelpers
     {
-        public static Property CreatePropertyWithSchedule(string name, DateTime purchaseTime, decimal purchasePrice, decimal purchaseAdditionalCost, DateTime initialTime, decimal initialValue, decimal growthRate, decimal priceValueCap, DateTime inflationStartTime, DateTime? rentalStartTime, 
+        public static Property CreatePropertyWithSchedule(string name, DateTime purchaseTime, decimal purchasePrice, decimal purchaseAdditionalCost, DateTime initialTime, decimal initialValue, decimal growthRate, decimal priceValueCap,  DateTime? rentalStartTime, 
             decimal initialYearlyRent, decimal totalRentalInducedRate, decimal rentIncreaseRate, decimal? rentCap, decimal initialTotalLevyAndRatesAnnualRate, decimal levyAndRatesInflationRate, Account rentalIncomeAccount)
         {
             var property = new Property(name)
@@ -19,7 +19,7 @@ namespace NewFinance.Concrete.Contracts
             SteadyFlowDescriptor? rentalNetInFlowDescriptor = null;
             if (rentalStartTime.HasValue)
             {
-                var rentalInflation = FlowHelpers.ConstantInflation(inflationStartTime, rentIncreaseRate);
+                var rentalInflation = FlowHelpers.ConstantInflation(rentalStartTime.Value, rentIncreaseRate);
                 rentalNetInFlowDescriptor = rentalInflation.ApplyInflation(rentalStartTime.Value, yearlyNetRent/Constants.DaysPerYear);
                 if (rentCap.HasValue)
                 {
@@ -29,7 +29,7 @@ namespace NewFinance.Concrete.Contracts
             var schedule = new PropertySchedule(property, purchaseTime, purchasePrice, initialTime, initialValue, p=>p>=priceValueCap ? 0 : growthRate, rentalNetInFlowDescriptor, rentalIncomeAccount)
             {
                 InitialTotalLevyAndRatesAnnualRate = initialTotalLevyAndRatesAnnualRate,
-                LevyAndRatesInflation = FlowHelpers.ConstantInflation(inflationStartTime, levyAndRatesInflationRate)
+                LevyAndRatesInflation = FlowHelpers.ConstantInflation(purchaseTime, levyAndRatesInflationRate)
             };
             property.Schedule = schedule;
             return property;
@@ -39,7 +39,7 @@ namespace NewFinance.Concrete.Contracts
         {
             var loan = new Loan($"Personal Loan {name}");
 
-            var loanContract = new LoanContract(loan, null!, startTime, loanAmount, alreadySettled)
+            var loanContract = new LoanContract(loan, null!, null, startTime, loanAmount, alreadySettled)
             {
                 CashAccount = cashAccount,
                 AnnualPrincipalPayment = principleRepaymentTotalYears.HasValue? loanAmount / principleRepaymentTotalYears.Value : 0,
@@ -50,11 +50,11 @@ namespace NewFinance.Concrete.Contracts
             return loan;
         }
 
-        public static Loan CreateLoan(Property property, decimal loanAmount, Account cashAccount, decimal offsetRatio, decimal? principalRepaymentTotalYears, decimal annualInterestRate, bool alreadySettled)
+        public static Loan CreateLoan(Property property, (DateTime, decimal)? deposit, decimal loanAmount, Account cashAccount, decimal offsetRatio, decimal? principalRepaymentTotalYears, decimal annualInterestRate, bool alreadySettled)
         {
             var loan = new Loan($"Loan for {property.Name}");
 
-            var loanContract = new LoanContract(loan, property, null, loanAmount, alreadySettled)
+            var loanContract = new LoanContract(loan, property, deposit, null, loanAmount, alreadySettled)
             {
                 CashAccount = cashAccount,
                 OffsetRatio = offsetRatio,

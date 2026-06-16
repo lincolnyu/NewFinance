@@ -17,9 +17,9 @@ namespace NewFinance.Core
             }
         }
 
-        public DateTime Execute(DateTime currentTime)
+        public DateTime? Execute(DateTime currentTime)
         {
-            DateTime minNextTime = this.ExecuteContracts(Contracts, currentTime);
+            DateTime? minNextTime = this.ExecuteContracts(Contracts, currentTime);
 
             if (NextForcedTime != null)
             {
@@ -33,7 +33,7 @@ namespace NewFinance.Core
                 }
             }
 
-            System.Diagnostics.Debug.Assert(minNextTime > currentTime, $"Next execution time {minNextTime} should be greater than current time {currentTime}");
+            System.Diagnostics.Debug.Assert(minNextTime is null || minNextTime > currentTime, $"Next execution time {minNextTime} should be greater than current time {currentTime}");
     
             return minNextTime;
         }

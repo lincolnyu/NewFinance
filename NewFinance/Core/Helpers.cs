@@ -29,16 +29,16 @@ namespace NewFinance.Core
             return requestedTimePropertyValue < requestedTimeRentalIncome ? requestedTimePropertyValue : requestedTimeRentalIncome;
         }
 
-        public static DateTime ExecuteContracts(this ContractExecutor executor, IEnumerable<Contract> contracts, DateTime currentTime)
+        public static DateTime? ExecuteContracts(this ContractExecutor executor, IEnumerable<Contract> contracts, DateTime currentTime)
         {
-            DateTime minNextTime = DateTime.MaxValue;
+            DateTime? minNextTime = null;
 
             foreach (var contract in contracts)
             {
                 var nextTime = contract.Execute(executor, currentTime);
-                if (nextTime < minNextTime)
+                if (nextTime is not null && (minNextTime is null || nextTime < minNextTime))
                 {
-                    minNextTime = nextTime;
+                    minNextTime = nextTime.Value;
                 }
             }
 
@@ -58,7 +58,7 @@ namespace NewFinance.Core
         }
 
 
-        public static DateTime CurrentBOEF(this DateTime time)
+        public static DateTime CurrentBOFY(this DateTime time)
         {
             var boef = new DateTime(time.Month > 6 || (time.Month == 6 && time.Day == 30) ? time.Year : time.Year - 1, 7, 1);
             return boef;

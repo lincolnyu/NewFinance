@@ -10,6 +10,10 @@ namespace NewFinance.Concrete.Contracts
 
         public required Account CashAccount { get; set; }
 
+        public (DateTime, decimal)? Deposit {get;}
+
+        public DateTime? StartOrSettlementTime {get;}
+
         public decimal LoanAmount { get; set; }
 
         public decimal PurchaseAdditionalCost{ get; set; }
@@ -24,9 +28,14 @@ namespace NewFinance.Concrete.Contracts
 
         public ChangeTracker PaidInterestTracker { get; } = new ChangeTracker();
 
-        public LoanContract(Loan loanAccount, Property? property, DateTime? startTime, decimal loanAmount, bool alreadySettled) : base(startTime?? property!.Schedule!.StartTime!.Value, loanAccount, 
+        public Action? OnStart { get; set; }
+
+        public LoanContract(Loan loanAccount, Property? property, (DateTime, decimal)? deposit, DateTime? startOrSettlemntTime, decimal loanAmount, bool alreadySettled) : base(deposit?.Item1 ?? startOrSettlemntTime ?? property!.Schedule!.StartTime!.Value, loanAccount, 
             string.IsNullOrEmpty(loanAccount.Name) ? (property is null? "Loan" : $"Loan for {property?.Name}")  : loanAccount.Name)
         {
+            Deposit = deposit;
+            StartOrSettlementTime = startOrSettlemntTime ?? property!.Schedule!.StartTime!.Value;
+            System.Diagnostics.Debug.Assert(deposit is not null && StartOrSettlementTime is not null && StartOrSettlementTime > deposit.Value.Item1 || deposit is null);
             Property = property;
             LoanAmount = loanAmount;
             PurchaseAdditionalCost = property?.PurchaseAdditionalCost ?? 0;
@@ -40,20 +49,38 @@ namespace NewFinance.Concrete.Contracts
             Account!.Balance = 0;
         }
 
-        protected override (DateTime processedTime, DateTime bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
+        protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
         {
-            if (currentTime == StartTime)
+            if (currentTime == Deposit?.Item1)
             {
+                Account!.Balance = -Deposit.Value.Item2;
+                CashAccount.Balance += Deposit.Value.Item2;
+                return (currentTime, StartOrSettlementTime!.Value);
+            }
+
+            if (currentTime == StartOrSettlementTime)
+            {
+                                if (LoanAmount == 102667)
+                {
+                    LoanAmount = LoanAmount;
+                }
+
                 if (!AlreadySettled)
                 {
                     ExecuteSettlement();
                 }
                 Account!.Balance = -LoanAmount;
 
+                OnStart?.Invoke();
+
                 return (currentTime, currentTime.AddMonths(1));
             }
             else
             {
+                if (LoanAmount == 102667)
+                {
+                    LoanAmount = LoanAmount;
+                }
                 DateTime newTime;
                 while (true)
                 {
@@ -71,7 +98,7 @@ namespace NewFinance.Concrete.Contracts
 
         private void ExecuteSettlement()
         {
-            var totalFundsRequired = Property?.Balance??0 + PurchaseAdditionalCost;
+            var totalFundsRequired = (Property?.Balance??0) + PurchaseAdditionalCost - (Deposit?.Item2 ?? 0);
             var cashRequired = totalFundsRequired - LoanAmount;
             CashAccount.Balance -= cashRequired;
         }

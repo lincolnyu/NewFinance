@@ -1,3 +1,4 @@
+using System.Data;
 using NewFinance.Core;
 
 namespace NewFinance.Concrete.Contracts
@@ -11,6 +12,8 @@ namespace NewFinance.Concrete.Contracts
         public List<List<string>> Table { get; } = [];
 
         public List<(object, string)> ReportedItems {get;} = [];
+
+        public HashSet<DateTime> AdditionalReportDates {get;} = new HashSet<DateTime>();
 
         public List<string> ColumnNames {get;} = [];
 
@@ -31,9 +34,9 @@ namespace NewFinance.Concrete.Contracts
             ColumnNames.Clear();
         }
 
-        protected override (DateTime processedTime, DateTime bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
+        protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
         {
-            if (currentTime.IsEOFY())
+            if (currentTime.IsEOFY() || AdditionalReportDates.Contains(currentTime))
             {
                 var populateColumNames = ColumnNames.Count == 0;
 
