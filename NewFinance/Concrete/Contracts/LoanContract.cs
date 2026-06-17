@@ -62,11 +62,6 @@ namespace NewFinance.Concrete.Contracts
 
             if (currentTime == StartOrSettlementTime)
             {
-                                if (LoanAmount == 102667)
-                {
-                    LoanAmount = LoanAmount;
-                }
-
                 if (!AlreadySettled)
                 {
                     ExecuteSettlement();
@@ -79,6 +74,7 @@ namespace NewFinance.Concrete.Contracts
             }
             else
             {
+                // Update in every iteration of Execution() call, as the conditions may change for each iteration.
                 if (LoanAmount == 102667)
                 {
                     LoanAmount = LoanAmount;

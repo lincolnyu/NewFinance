@@ -9,9 +9,9 @@ namespace NewFinance.Core
 
         protected DateTime? LastProcessedTime { get; private set; }
 
-        protected DateTime? LastBookedTime {get; private set;}
+        protected DateTime? LastBookedTime { get; private set; }
 
-        public bool IsCompleted { get; private set; }
+        public bool IsCompleted { get; protected set; }
 
         public virtual DateTime? Execute(ContractExecutor executor, DateTime currentTime)
         {
@@ -32,8 +32,6 @@ namespace NewFinance.Core
 
             // Processed time may not necessarily be the current time. It is the time that has been processed in the currennt execution so the next execution will know where to start.
             var (processedTime, bookedTime) = Execute(executor,  LastProcessedTime, LastBookedTime, currentTime);
-
-            IsCompleted = bookedTime == null;
 
             LastBookedTime = bookedTime;
             LastProcessedTime = processedTime;

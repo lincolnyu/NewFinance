@@ -1,13 +1,10 @@
-using System.Data;
 using NewFinance.Core;
 
 namespace NewFinance.Concrete.Contracts
 {
-    public class PostTaxCsvCollator : Contract
+    public class PostTaxCsvCollator(TextWriter? writer = null) : Contract(null, "Post Tax CSV Collator")
     {
-        public PostTaxCsvCollator() : base(null, "Post Tax CSV Collator")
-        {
-        }
+        private readonly TextWriter? _writer = writer;
 
         public List<List<string>> Table { get; } = [];
 
@@ -46,7 +43,7 @@ namespace NewFinance.Concrete.Contracts
                         currentTime.ToString("yyyy-MM-dd") : 
                         $"EOF {currentTime.Year}"
                 };
-                Console.WriteLine($"{currentTime:yyyy}:");
+                _writer?.WriteLine($"{currentTime:yyyy}:");
                 foreach (var col in ReportedItems)
                 {
                     if (col.Item1 is Entity entity)
@@ -55,12 +52,12 @@ namespace NewFinance.Concrete.Contracts
                         {
                             if (account.Ownership.TryGetValue(entity, out var share))
                             {
-                                Console.WriteLine($" '{account.Name}' balance = {account.Balance * share:0,000.00}");
+                                _writer?.WriteLine($" '{account.Name}' balance = {account.Balance * share:0,000.00}");
                                 row.Add((account.Balance * share).ToString("0.00"));
                             }
                             else
                             {
-                                Console.WriteLine($" '{account.Name}' balance = {account.Balance:0,000.00}");
+                                _writer?.WriteLine($" '{account.Name}' balance = {account.Balance:0,000.00}");
                                 row.Add(account.Balance.ToString("0.00"));
                             }
                             if (populateColumNames)
@@ -69,10 +66,10 @@ namespace NewFinance.Concrete.Contracts
                             }
                         }
                     }
-                    if (col.Item1 is IHasBalance balanceItem)
+                    else if (col.Item1 is IHasBalance balanceItem)
                     {
                         var name = GetColumnName(col);
-                        Console.WriteLine($" '{name}' balance = {balanceItem.Balance:0,000.00}");
+                        _writer?.WriteLine($" '{name}' balance = {balanceItem.Balance:0,000.00}");
                         row.Add(balanceItem.Balance.ToString("0.00"));
                         if (populateColumNames)
                         {
@@ -85,13 +82,13 @@ namespace NewFinance.Concrete.Contracts
                         if (name.EndsWith("total"))
                         {
                             var val = tracker["PostTaxCsvCollator-total"].TrackedChange;
-                            Console.WriteLine($" '{name}' = {val:0,000.00}");
+                            _writer?.WriteLine($" '{name}' = {val:0,000.00}");
                             row.Add(val.ToString("0.00"));
                         }
                         else
                         {
                             var val = tracker["PostTaxCsvCollator"].GetTrackedChangeAndReset();
-                            Console.WriteLine($" '{name}' = {val:0,000.00}");
+                            _writer?.WriteLine($" '{name}' = {val:0,000.00}");
                             row.Add(val.ToString("0.00"));
                         }
                         if (populateColumNames)

@@ -1,22 +1,15 @@
-using NewFinance.Common;
 using NewFinance.Core;
 
 namespace NewFinance.Concrete.Contracts
 {
-    public class OneOff : AccountBindingContract
+    public class OneOff(DateTime time, string name, Action oneOffAction) : Contract(time, name)
     {
-        public OneOff(DateTime time, Account account, decimal amount, string name) : base(time, account, name)
-        {
-            Amount=amount;
-        }
-
-        public decimal Amount { get; }
-
         protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
         {
             if (currentTime == StartTime)
             {
-                Account!.Balance += Amount;; // No actual flow, just to trigger the contract execution at the right time.
+                oneOffAction(); // Execute the provided action at the specified time.
+                IsCompleted = true; // Mark the contract as completed after execution.
                 return (currentTime, null);
             }
             else
