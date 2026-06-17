@@ -28,6 +28,8 @@ namespace NewFinance.Concrete.Contracts
 
         public ChangeTracker PaidInterestTracker { get; } = new ChangeTracker();
 
+        public ChangeTracker PaidPrincipalTracker { get; } = new ChangeTracker();
+
         public Action? OnStart { get; set; }
 
         public LoanContract(Loan loanAccount, Property? property, (DateTime, decimal)? deposit, DateTime? startOrSettlemntTime, decimal loanAmount, bool alreadySettled) : base(deposit?.Item1 ?? startOrSettlemntTime ?? property!.Schedule!.StartTime!.Value, loanAccount, 
@@ -114,7 +116,8 @@ namespace NewFinance.Concrete.Contracts
             CashAccount.Balance -= interest + principalPayment;
             Account!.Balance += principalPayment;
 
-            PaidInterestTracker.TrackChange(interest);
+            PaidInterestTracker.TrackChange(-interest);
+            PaidPrincipalTracker.TrackChange(-principalPayment);
         }
     }
 }

@@ -54,9 +54,9 @@ namespace NewFinance.Concrete.Contracts
 
                     var netRentalIncome = propertySchedule.RentalInducedNetIncome?.InflowTracker[this].GetTrackedChangeAndReset() * share ?? 0m;
 
-                    var interestPaid = loan?.Contract!.PaidInterestTracker[this].GetTrackedChangeAndReset() * share ?? 0m;
+                    var interestPaid = (-loan?.Contract!.PaidInterestTracker[this].GetTrackedChangeAndReset()) * share ?? 0m;
 
-                    var fees = propertySchedule.ExtraFeesTracker[this].GetTrackedChangeAndReset() * share;
+                    var fees = -propertySchedule.ExtraFeesTracker[this].GetTrackedChangeAndReset() * share;
 
                     var netRentalTaxable = netRentalIncome - interestPaid - fees;
 
@@ -110,7 +110,7 @@ namespace NewFinance.Concrete.Contracts
             decimal totalTaxPayable = residentialIncome +  medicareLevy;
             decimal taxAssessmentBalance = totalTaxPayable - totalPaygWithheld;
             cashPaymentAccount.Balance -= taxAssessmentBalance;
-            TaxPaid.TrackChange(totalTaxPayable);
+            TaxPaid.TrackChange(-totalTaxPayable);
         }
 
         private bool IsNegativeGearingAllowed(Property property, DateTime currentTime)

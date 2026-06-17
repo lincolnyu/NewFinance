@@ -36,11 +36,16 @@ namespace NewFinance.Concrete.Contracts
 
         protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
         {
-            if (currentTime.IsEOFY() || AdditionalReportDates.Contains(currentTime))
+            var isAdditionalReportDate = AdditionalReportDates.Contains(currentTime);
+            if (currentTime.IsEOFY() || isAdditionalReportDate)
             {
                 var populateColumNames = ColumnNames.Count == 0;
 
-                var row = new List<string>() { currentTime.ToString("yyyy") };
+                var row = new List<string>() {  
+                    isAdditionalReportDate? 
+                        currentTime.ToString("yyyy-MM-dd") : 
+                        $"EOF {currentTime.Year}"
+                };
                 Console.WriteLine($"{currentTime:yyyy}:");
                 foreach (var col in ReportedItems)
                 {
@@ -93,6 +98,15 @@ namespace NewFinance.Concrete.Contracts
                         {
                             ColumnNames.Add(name);
                         }
+                    }
+                    else if (col.Item1 is Func<int, int, string> cellWriter)
+                    {
+                        row.Add(cellWriter(Table.Count, row.Count));
+                        ColumnNames.Add(col.Item2);
+                    }
+                    else
+                    {
+                        throw new Exception($"Unsupported column type {col.Item1.GetType()}");
                     }
                 }
                 Table.Add(row);
