@@ -18,6 +18,19 @@ namespace NewFinance.Concrete.Contracts
             base.Reset(executor);
 
             _rentalLossPool = 0m;
+
+            foreach (var asset in TaxPayer.Assets)
+            {
+                if (asset is Property property)
+                {
+                    var propertySchedule = property.Schedule!;
+                    propertySchedule.RentalInducedNetIncome?.InflowTracker[this].Reset();
+                    propertySchedule.FeesTracker[this].Reset();
+
+                    var loan = TaxPayer.Liabilities.OfType<Loan>().FirstOrDefault(loan => loan.Contract!.Property == property);
+                    loan?.Contract!.PaidInterestTracker[this].Reset();
+                }
+            }
         }
 
         protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
@@ -43,11 +56,7 @@ namespace NewFinance.Concrete.Contracts
                 {
                     var propertySchedule = property.Schedule!;
 
-                    if (!propertySchedule.IsInvestmentProperty)
-                    {
-                        continue;
-                    }
-
+                    // This is also to clear trackers.
                     (var _, var share) = property.Ownership.TryGetValue(TaxPayer, out var s) ? (TaxPayer, s) : (null, 0m);
 
                     var loan = TaxPayer.Liabilities.OfType<Loan>().FirstOrDefault(loan => loan.Contract!.Property == property);
@@ -56,27 +65,30 @@ namespace NewFinance.Concrete.Contracts
 
                     var interestPaid = (-loan?.Contract!.PaidInterestTracker[this].GetTrackedChangeAndReset()) * share ?? 0m;
 
-                    var fees = -propertySchedule.ExtraFeesTracker[this].GetTrackedChangeAndReset() * share;
+                    var fees = -propertySchedule.FeesTracker[this].GetTrackedChangeAndReset() * share;
 
                     var netRentalTaxable = netRentalIncome - interestPaid - fees;
 
-                    var allowNegativeGearing = IsNegativeGearingAllowed(property, currentTime);
-                    if (!allowNegativeGearing && netRentalTaxable < 0)
+                    if (propertySchedule.IsInvestmentProperty)
                     {
-                        _rentalLossPool += -netRentalTaxable;
-                        netRentalTaxable = 0;
+                        var allowNegativeGearing = IsNegativeGearingAllowed(property, currentTime);
+                        if (!allowNegativeGearing && netRentalTaxable < 0)
+                        {
+                            _rentalLossPool += -netRentalTaxable;
+                            netRentalTaxable = 0;
+                        }
+
+                        decimal? netCapitalGain = null;
+                        if (property.SalesProceeds is not null) // just sold
+                        {
+                            var saleProceeds =  property.SalesProceeds!.TotalChange;
+                            var capitalGain = saleProceeds - property.PurchaseAdditionalCost - property.Schedule!.PurchasePrice;
+                            netCapitalGain = capitalGain * share;
+                            property.SalesProceeds = null;
+                        }
+                        totalPropertyGain += netRentalTaxable + (netCapitalGain ?? 0);
                     }
 
-                    decimal? netCapitalGain = null;
-                    if (property.SalesProceeds is not null) // just sold
-                    {
-                        var saleProceeds =  property.SalesProceeds!.TotalChange;
-                        var capitalGain = saleProceeds - property.PurchaseAdditionalCost - property.Schedule!.PurchasePrice;
-                        netCapitalGain = capitalGain * share;
-                        property.SalesProceeds = null;
-                    }
-
-                    totalPropertyGain += netRentalTaxable + (netCapitalGain ?? 0);
                 }
             }
 

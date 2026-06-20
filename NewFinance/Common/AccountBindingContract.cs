@@ -10,12 +10,5 @@ namespace NewFinance.Common
         {
             Account = account;
         }
-
-        public override void Reset(ContractExecutor executor)
-        {
-            base.Reset(executor);
-
-            Account?.Balance = 0;
-        }
     }
 }

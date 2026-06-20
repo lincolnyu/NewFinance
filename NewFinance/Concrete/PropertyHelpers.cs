@@ -7,42 +7,44 @@ namespace NewFinance.Concrete.Contracts
 {
     public static class PropertyHelpers
     {
-        public static Property CreatePropertyWithSchedule(string name, DateTime purchaseTime, decimal purchasePrice, decimal purchaseAdditionalCost, DateTime initialTime, decimal initialValue, decimal growthRate, decimal priceValueCap,  DateTime? rentalStartTime, 
-            decimal initialYearlyRent, decimal totalRentalInducedRate, decimal rentIncreaseRate, decimal? rentCap, decimal initialTotalLevyAndRatesAnnualRate, decimal levyAndRatesInflationRate, Account rentalIncomeAccount)
+        public static Property CreatePropertyWithSchedule(string name, DateTime purchaseTime, decimal purchasePrice, decimal purchaseAdditionalCost, DateTime initialTime, decimal initialValue, decimal growthRate, 
+            decimal priceValueCap,  decimal initialBaseAnnualFeeRate, decimal initialRentalFeeRate, decimal levyAndRatesInflationRate, Account cashAccount)
         {
             var property = new Property(name)
             {
                 PurchaseAdditionalCost = purchaseAdditionalCost
             };
-            var yearlyNetRent = initialYearlyRent * (1 - totalRentalInducedRate);
 
-            SteadyFlowDescriptor? rentalNetInFlowDescriptor = null;
-            if (rentalStartTime.HasValue)
+            var schedule = new PropertySchedule(property, purchaseTime, purchasePrice, initialTime, initialValue, p=>p>=priceValueCap ? 0 : growthRate, cashAccount)
             {
-                var rentalInflation = FlowHelpers.ConstantInflation(rentalStartTime.Value, rentIncreaseRate);
-                rentalNetInFlowDescriptor = rentalInflation.ApplyInflation(rentalStartTime.Value, yearlyNetRent/Constants.DaysPerYear);
-                if (rentCap.HasValue)
-                {
-                    FlowHelpers.FlowCapping(rentalNetInFlowDescriptor.Value, rentCap.Value/Constants.DaysPerYear, true);
-                }
-            }
-            var schedule = new PropertySchedule(property, purchaseTime, purchasePrice, initialTime, initialValue, p=>p>=priceValueCap ? 0 : growthRate, rentalNetInFlowDescriptor, rentalIncomeAccount)
-            {
-                InitialTotalLevyAndRatesAnnualRate = initialTotalLevyAndRatesAnnualRate,
-                LevyAndRatesInflation = FlowHelpers.ConstantInflation(purchaseTime, levyAndRatesInflationRate)
+                InitialAnnualBaseFeeRate = initialBaseAnnualFeeRate,
+                InitialAnnualRentalFeeRate = initialRentalFeeRate,
+                FeeInflation = FlowHelpers.ConstantInflation(purchaseTime, levyAndRatesInflationRate)
             };
             property.Schedule = schedule;
             return property;
         }
 
-        public static Loan CreatePersonalLoan(string name, DateTime startTime, decimal loanAmount, Account cashAccount, decimal? principleRepaymentTotalYears, decimal annualInterestRate, bool alreadySettled)
+        public static SteadyFlow CreatePropertyRentalStream(string name, DateTime startTime, decimal initialYearlyRent, decimal totalRentalInducedRate, decimal rentIncreaseRate, decimal? yearlyRentCap, Account cashAccount)
+        {
+            var yearlyNetRent = initialYearlyRent * (1 - totalRentalInducedRate);
+            var rentalInflation = FlowHelpers.ConstantInflation(startTime, rentIncreaseRate);
+            var rentalNetInFlowDescriptor = rentalInflation.ApplyInflation(startTime, yearlyNetRent/Constants.DaysPerYear);
+            if (yearlyRentCap.HasValue)
+            {
+                FlowHelpers.FlowCapping(rentalNetInFlowDescriptor, yearlyRentCap.Value/Constants.DaysPerYear, false);
+            }
+            return new SteadyFlow(rentalNetInFlowDescriptor, cashAccount, name);
+        }
+
+        public static Loan CreatePersonalLoan(string name, DateTime startTime, decimal loanAmount, Account cashAccount, decimal? loanTermYears, decimal annualInterestRate, bool alreadySettled)
         {
             var loan = new Loan($"Personal Loan {name}");
 
             var loanContract = new LoanContract(loan, null!, null, startTime, loanAmount, alreadySettled)
             {
                 CashAccount = cashAccount,
-                AnnualPrincipalPayment = principleRepaymentTotalYears.HasValue? loanAmount / principleRepaymentTotalYears.Value : 0,
+                LoanTermYears = loanTermYears,
                 AnnualInterestRate = annualInterestRate
             };
             loan.Contract = loanContract;
@@ -50,7 +52,7 @@ namespace NewFinance.Concrete.Contracts
             return loan;
         }
 
-        public static Loan CreateLoan(Property property, (DateTime, decimal)? deposit, decimal loanAmount, Account cashAccount, decimal offsetRatio, decimal? principalRepaymentTotalYears, decimal annualInterestRate, bool alreadySettled)
+        public static Loan CreateLoan(Property property, (DateTime, decimal)? deposit, decimal loanAmount, Account cashAccount, decimal offsetRatio, decimal? loanTermYears, decimal annualInterestRate, bool alreadySettled)
         {
             var loan = new Loan($"Loan for {property.Name}");
 
@@ -58,7 +60,7 @@ namespace NewFinance.Concrete.Contracts
             {
                 CashAccount = cashAccount,
                 OffsetRatio = offsetRatio,
-                AnnualPrincipalPayment = principalRepaymentTotalYears.HasValue? loanAmount / principalRepaymentTotalYears.Value : 0,
+                LoanTermYears = loanTermYears,
                 AnnualInterestRate = annualInterestRate
             };
             loan.Contract = loanContract;

@@ -22,7 +22,7 @@ namespace NewFinance.Concrete.Contracts
 
         public decimal OffsetRatio { get; set; }
 
-        public decimal AnnualPrincipalPayment { get; set; }
+        public decimal? LoanTermYears { get; set; }
 
         public decimal AnnualInterestRate { get; set; }   // e.g. 0.05 for 5%
 
@@ -42,13 +42,6 @@ namespace NewFinance.Concrete.Contracts
             LoanAmount = loanAmount;
             PurchaseAdditionalCost = property?.PurchaseAdditionalCost ?? 0;
             AlreadySettled = alreadySettled;
-        }
-
-        override public void Reset(ContractExecutor executor)
-        {
-            base.Reset(executor);
-
-            Account!.Balance = 0;
         }
 
         protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
@@ -101,19 +94,38 @@ namespace NewFinance.Concrete.Contracts
             CashAccount.Balance -= cashRequired;
         }
 
+        private decimal CalculateMonthlyPayment()
+        {
+            double monthlyRate = (double)AnnualInterestRate / 12 ;  // e.g. 5.55 -> 0.004625
+            double numPayments = (double)LoanTermYears! * 12;
+
+            if (monthlyRate == 0) return (decimal)((double)LoanAmount / numPayments);
+
+            double power = Math.Pow(1 + monthlyRate, numPayments);
+            return (decimal)((double)LoanAmount * (monthlyRate * power) / (power - 1));
+        }
+
         private void ApplyRepayment(TimeSpan time)
         {
             var fractionOfYear = time.Days / Constants.DaysPerYear;
-            var principalPayment = Math.Max(0, Math.Min(-Account!.Balance, AnnualPrincipalPayment * fractionOfYear)); // Assuming MonthlyPrincipalPayment is the payment for a full month.
 
             var interestApplicable = Math.Max(0, (-Account!.Balance) - CashAccount.Balance * OffsetRatio);  // Assuming the offset account reduces the interest applied on the loan balance.
             var interest = AnnualInterestRate * fractionOfYear * interestApplicable;
-            
-            CashAccount.Balance -= interest + principalPayment;
-            Account!.Balance += principalPayment;
+
+            if (LoanTermYears.HasValue)
+            {
+                var currentMonthlyPayment = CalculateMonthlyPayment();
+                var principalPayment = currentMonthlyPayment * fractionOfYear * 12 - interest;
+                CashAccount.Balance -= interest + principalPayment;
+                Account!.Balance += principalPayment;
+                PaidPrincipalTracker.TrackChange(-principalPayment);
+            }
+            else
+            {
+                CashAccount.Balance -= interest;
+            }
 
             PaidInterestTracker.TrackChange(-interest);
-            PaidPrincipalTracker.TrackChange(-principalPayment);
         }
     }
 }

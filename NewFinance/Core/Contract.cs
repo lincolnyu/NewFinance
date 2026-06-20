@@ -11,7 +11,13 @@ namespace NewFinance.Core
 
         protected DateTime? LastBookedTime { get; private set; }
 
+        /// <summary>
+        ///  When the contract set IsCompleted to true, it will no longer be executed in the future even if the booked time is still in the future. 
+        ///  The contract should handle arrangement as it sees fit when to set IsCompleted to true by itself. 
+        /// </summary>
         public bool IsCompleted { get; protected set; }
+
+        public bool IsActive => !IsCompleted && LastBookedTime <= DateTime.MaxValue;
 
         public virtual DateTime? Execute(ContractExecutor executor, DateTime currentTime)
         {
@@ -23,6 +29,7 @@ namespace NewFinance.Core
             {
                 return StartTime.Value;
             }
+
             if (IsCompleted)
             {
                 return null;
@@ -33,12 +40,28 @@ namespace NewFinance.Core
             // Processed time may not necessarily be the current time. It is the time that has been processed in the currennt execution so the next execution will know where to start.
             var (processedTime, bookedTime) = Execute(executor,  LastProcessedTime, LastBookedTime, currentTime);
 
-            LastBookedTime = bookedTime;
             LastProcessedTime = processedTime;
+
+            if (!IsCompleted)
+            {
+                LastBookedTime = bookedTime;
+            }
+            else
+            {
+                bookedTime = null; // No need to book next execution if the contract is completed.
+            }
 
             return bookedTime;
         }
 
+
+        /// <summary>
+        ///  It runs both at the beginning and at the end of the simulation.
+        ///  So it needs to both
+        ///   - Reset the states that the contract execution cares about.
+        ///   - Reset what has been changed by the contract execution and therefore may affect future simulations if not reset.
+        /// </summary>
+        /// <param name="executor"></param>
         public virtual void Reset(ContractExecutor executor)
         {
             LastProcessedTime = null;
