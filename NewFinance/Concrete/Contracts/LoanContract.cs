@@ -48,7 +48,7 @@ namespace NewFinance.Concrete.Contracts
         {
             if (currentTime == Deposit?.Item1)
             {
-                CashAccount.Balance -= Deposit.Value.Item2;
+                executor.ExecuteTransaction(CashAccount, -Deposit.Value.Item2, this, $"Deposit for {Name}");
                 return (currentTime, StartOrSettlementTime!.Value);
             }
 
@@ -56,9 +56,9 @@ namespace NewFinance.Concrete.Contracts
             {
                 if (!AlreadySettled)
                 {
-                    ExecuteSettlement();
+                    ExecuteSettlement(executor);
                 }
-                Account!.Balance = -LoanAmount;
+                executor.ExecuteTransaction(Account!, -LoanAmount, this, $"Loan amount for {Name}");
                 OnStart?.Invoke();
 
                 return (currentTime, currentTime.AddMonths(1));
@@ -78,18 +78,18 @@ namespace NewFinance.Concrete.Contracts
                     {
                         break;
                     }
-                    ApplyRepayment(newTime - lastProcessedTime!.Value);    
+                    ApplyRepayment(executor, newTime - lastProcessedTime!.Value);
                     lastProcessedTime = newTime;
                 }
                 return (lastProcessedTime!.Value, newTime);
             }
         }
 
-        private void ExecuteSettlement()
+        private void ExecuteSettlement(ContractExecutor executor)
         {
             var totalFundsRequired = (Property?.Balance??0) + PurchaseAdditionalCost - (Deposit?.Item2 ?? 0);
             var cashRequired = totalFundsRequired - LoanAmount;
-            CashAccount.Balance -= cashRequired;
+            executor.ExecuteTransaction(CashAccount, -cashRequired, this, $"Settlement for {Name}");
         }
 
         private decimal CalculateMonthlyPayment()
@@ -102,8 +102,25 @@ namespace NewFinance.Concrete.Contracts
             double power = Math.Pow(1 + monthlyRate, numPayments);
             return (decimal)((double)LoanAmount * (monthlyRate * power) / (power - 1));
         }
+        // private decimal CalculateMonthlyPayment()  // for recalc on existing loans
+        // {
+        //     double r = (double)AnnualInterestRate / 12.0;
+        //     double n = (double)LoanTermYears! * 12;
 
-        private void ApplyRepayment(TimeSpan time)
+        //     if (Math.Abs(r) < 0.000001)
+        //         return (decimal)Math.Ceiling( (double)LoanAmount / n * 100) / 100;
+
+        //     double power = Math.Pow(1 + r, n);
+        //     double payment = (double)LoanAmount * (r * power) / (power - 1);
+
+        //     // ANZ-like adjustments
+        //     payment = Math.Round(payment, 2);           // bank rounding
+        //     // payment = Math.Floor(payment);           // sometimes they floor it
+
+        //     return (decimal)payment;
+        // }
+
+        private void ApplyRepayment(ContractExecutor executor, TimeSpan time)
         {
             var fractionOfYear = time.Days / Constants.DaysPerYear;
 
@@ -118,13 +135,15 @@ namespace NewFinance.Concrete.Contracts
                 {
                     principalPayment = -Account.Balance;
                 }
-                CashAccount.Balance -= interest + principalPayment;
-                Account!.Balance += principalPayment;
+
+                executor.ExecuteTransaction(CashAccount, -(interest + principalPayment), this, $"P+I repayment for {Name}");
+                executor.ExecuteTransaction(Account!, principalPayment, this, $"Principal payment for {Name}");
+
                 PaidPrincipalTracker.TrackChange(-principalPayment);
             }
             else
             {
-                CashAccount.Balance -= interest;
+                executor.ExecuteTransaction(CashAccount, -interest, this, $"Interest payment for {Name}");
             }
 
             PaidInterestTracker.TrackChange(-interest);

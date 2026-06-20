@@ -9,6 +9,8 @@ namespace NewFinance.Core
 
         public DateTime? NextForcedTime { get; set; }
 
+        public DateTime? CurrentTime { get; private set;}
+
         public void Reset()
         {
             foreach (var c in Contracts)
@@ -19,6 +21,8 @@ namespace NewFinance.Core
 
         public DateTime? Execute(DateTime currentTime)
         {
+            CurrentTime = currentTime;
+
             DateTime? minNextTime = this.ExecuteContracts(Contracts, currentTime);
 
             if (NextForcedTime != null)
@@ -37,6 +41,8 @@ namespace NewFinance.Core
     
             return minNextTime;
         }
+
+        public List<Account.Transaction> Transactions { get; } = new List<Account.Transaction>();
 
         public void ReEnsureNextForcedTime(DateTime time)
         {

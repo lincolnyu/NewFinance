@@ -2,13 +2,13 @@ using NewFinance.Core;
 
 namespace NewFinance.Concrete.Contracts
 {
-    public class OneOff(DateTime time, string name, Action oneOffAction) : Contract(time, name)
+    public class OneOff(DateTime time, string name, Action<ContractExecutor, OneOff> oneOffAction) : Contract(time, name)
     {
         protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
         {
             if (currentTime == StartTime)
             {
-                oneOffAction(); // Execute the provided action at the specified time.
+                oneOffAction(executor, this); // Execute the provided action at the specified time.
                 IsCompleted = true; // Mark the contract as completed after execution.
                 return (currentTime, null);
             }

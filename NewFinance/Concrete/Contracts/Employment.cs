@@ -32,11 +32,11 @@ namespace NewFinance.Concrete.Contracts
             PaygWithheldTracker.ResetAll();
         }
 
-        protected override void ApplyInflow(decimal inflow, TimeSpan executionTimeSpan)
+        protected override void ApplyInflow(ContractExecutor executor, decimal inflow, TimeSpan executionTimeSpan)
         {
             var paygWithheld = WithholdPayg ? EstimatePaygWithholding(inflow, executionTimeSpan) : 0m;
 
-            Account!.Balance += inflow - paygWithheld;
+            executor.ExecuteTransaction(Account!, inflow - paygWithheld, this, $"Inflow for {Name}");
             InflowTracker.TrackChange(inflow);
             PaygWithheldTracker.TrackChange(paygWithheld);
         }

@@ -37,7 +37,7 @@ namespace NewFinance.Concrete.Contracts
         {
             if (currentTime.IsEOFY())
             {
-                PerformTaxAccounting(currentTime);
+                PerformTaxAccounting(executor, currentTime);
             }
 
             var nextEOFY = currentTime.NextEOFY();
@@ -47,7 +47,7 @@ namespace NewFinance.Concrete.Contracts
             return (currentTime, nextEOFY);
         }
 
-        private void PerformTaxAccounting(DateTime currentTime)
+        private void PerformTaxAccounting(ContractExecutor executor, DateTime currentTime)
         {
             decimal totalPropertyGain = 0m;
             foreach (var asset in TaxPayer.Assets)
@@ -121,7 +121,7 @@ namespace NewFinance.Concrete.Contracts
             decimal medicareLevy = new MedicareLevyRules().Calculate(totalTaxableIncome, TaxPayer);
             decimal totalTaxPayable = residentialIncome +  medicareLevy;
             decimal taxAssessmentBalance = totalTaxPayable - totalPaygWithheld;
-            cashPaymentAccount.Balance -= taxAssessmentBalance;
+            executor.ExecuteTransaction(cashPaymentAccount, -taxAssessmentBalance, this, $"Tax assessment for {Name}");
             TaxPaid.TrackChange(-totalTaxPayable);
         }
 

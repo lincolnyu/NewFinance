@@ -31,7 +31,7 @@ namespace NewFinance.Concrete.Contracts
 
         public Inflation FeeInflation { get; set; }
 
-        public (DateTime Time, Action Action)? Sale { get; set; }
+        public (DateTime Time, Action<ContractExecutor, PropertySchedule> Action)? Sale { get; set; }
 
         #endregion
 
@@ -46,13 +46,13 @@ namespace NewFinance.Concrete.Contracts
             var initialAnnualFeeRate = InitialAnnualBaseFeeRate + (IsInvestmentProperty ? InitialAnnualRentalFeeRate : 0);
             var fees =  initialAnnualFeeRate * levyInflation * (currentTime - lastTime).Days / Constants.DaysPerYear;
 
-            costPaymentAccount.Balance -= fees;
+            executor.ExecuteTransaction(costPaymentAccount, -fees, this, $"Fees for {Property.Name}");
             // TODO Additional costs such as repair, adhoc...
             FeesTracker.TrackChange(-fees);
 
             if (currentTime == Sale?.Time)
             {
-                Sale?.Action();
+                Sale?.Action(executor, this);
             }
 
             return (currentTime, bookedTime);

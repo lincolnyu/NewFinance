@@ -12,14 +12,14 @@ namespace NewFinance.Common
         public override void Reset(ContractExecutor executor)
         {
             base.Reset(executor);
-            Account!.Balance = 0;
+            Account!.ResetBalance();
         }
         
         protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
         {
             if (currentTime == StartTime)
             {
-                Account!.Balance = initialValue;
+                executor.ExecuteTransaction(Account!, initialValue, this, $"Initial value for {Name}");
                 return (currentTime, currentTime.Add(Step));
             }
             else
@@ -36,7 +36,8 @@ namespace NewFinance.Common
 
                     var growthRate = getGrowthRate(Account!.Balance);
                     var growthEachTimeStep = growthRate * Step.Days / Constants.DaysPerYear;
-                    Account!.Balance *= 1 + growthEachTimeStep;
+
+                    executor.ExecuteTransaction(Account!, Account.Balance * growthEachTimeStep, this, $"Growth for {Name}");
                     
                     lastProcessedTime = newTime;
                 }

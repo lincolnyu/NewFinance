@@ -78,24 +78,24 @@ namespace NewFinance.Concrete.Contracts
 
         public static void SellPropety(Property property, decimal saleCost, Loan? loan, DateTime saleTime, Account cashAccount)
         {
-            property.Schedule!.Sale =(saleTime , () =>
+            property.Schedule!.Sale =(saleTime, (executor, schedule) =>
             {
                 var salePrice = property.Balance;
                 var salesProceeds = salePrice - saleCost;
 
-                property.Balance = 0;
+                executor.ExecuteTransaction(property, -property.Balance, schedule, $"Sale of {property.Name}");
 
-                if (loan != null)
+                if (loan is not null)
                 {
                     var loanRepayment = loan.Balance;
-                    loan.Balance = 0;
+                    executor.ExecuteTransaction(loan, -loanRepayment, schedule, $"Closure of loan {loan.Name}");
                     salesProceeds += loanRepayment;
                 }
 
                 property.SalesProceeds = new ChangeTracker();
                 property.SalesProceeds.TrackChange(salesProceeds);
 
-                cashAccount.Balance += salesProceeds;
+                executor.ExecuteTransaction(cashAccount, salesProceeds, schedule, $"Proceeds from sale of {property.Name}");
             });
         }
     }

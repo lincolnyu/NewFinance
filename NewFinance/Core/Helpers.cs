@@ -45,6 +45,12 @@ namespace NewFinance.Core
             return minNextTime;
         }
 
+        public static void ExecuteTransaction(this ContractExecutor executor, Account account, decimal amount, Contract contract, string name = "")
+        {
+            var transaction = new Account.Transaction(name) { Account = account, Amount = amount, Contract = contract };
+            transaction.ExecuteAndRecord(executor);
+        }
+
         public static decimal GetTrackedChangeAndReset(this ChangeTracker.Subscription subscription)
         {
             var change = subscription.TrackedChange;

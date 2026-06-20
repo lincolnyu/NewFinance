@@ -40,7 +40,7 @@ namespace NewFinance.Common
                 var executionTimeSpan = (currentTime - lastProcessedTime)!.Value;
 
                 var inflow = dailyRateInBucket * (decimal)executionTimeSpan.TotalDays; // pro-rate the inflow by the fraction of the time span that has passed in the current bucket
-                ApplyInflow(inflow, executionTimeSpan);
+                ApplyInflow(executor, inflow, executionTimeSpan);
 
                 if (currentTime == NextFlowChangeUpdateDate)
                 {
@@ -69,7 +69,7 @@ namespace NewFinance.Common
             if (nextBurstTime == currentTime)
             {
                 var burstAmount = Bursts[BurstIndex].Amount;
-                Account!.Balance += burstAmount;
+                executor.ExecuteTransaction(Account!, burstAmount, this, $"Burst at {currentTime} for {Name}");
                 InflowTracker.TrackChange(burstAmount);
                 BurstIndex++;
 
@@ -83,9 +83,9 @@ namespace NewFinance.Common
             return (currentTime, nextBookedTime);
         }
 
-        protected virtual void ApplyInflow(decimal inflow, TimeSpan executionTimeSpan)
+        protected virtual void ApplyInflow(ContractExecutor executor, decimal inflow, TimeSpan executionTimeSpan)
         {
-            Account!.Balance += inflow;
+            executor.ExecuteTransaction(Account!, inflow, this, $"Inflow for {Name}");
             InflowTracker.TrackChange(inflow);
         }
 
