@@ -13,6 +13,7 @@ namespace NewFinance.Common
         protected TimeSpan? FlowBookingInterval { get; set; }
 
         public List<(DateTime Time, decimal Amount)> Bursts { get; } = new List<(DateTime, decimal)>();
+
         public int BurstIndex { get; private set; } = 0;
 
         public override void Reset(ContractExecutor executor)
@@ -20,6 +21,7 @@ namespace NewFinance.Common
             base.Reset(executor);
             InflowTracker.ResetAll();
             BurstIndex = 0;
+            CurrentInflowIndex = -1;
         }
 
         protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
@@ -27,6 +29,7 @@ namespace NewFinance.Common
             // If there is a burst at the current time, apply the burst first before applying the steady flow logic, and move to the next burst.
             if (currentTime == StartTime)
             {
+                BurstIndex = 0;
                 CurrentInflowIndex = 0;
                 NextFlowChangeUpdateDate = descriptor.Inflows[CurrentInflowIndex].EndTime; // currentTime.NextAnniversayCrossing(descriptor.YearlyFlowChangeUpdateMonth, descriptor.YearlyFlowChangeUpdateDay);
                 InflowTracker.ResetAll();
@@ -78,7 +81,7 @@ namespace NewFinance.Common
             }
 
             return (currentTime, nextBookedTime);
-       }
+        }
 
         protected virtual void ApplyInflow(decimal inflow, TimeSpan executionTimeSpan)
         {

@@ -48,8 +48,7 @@ namespace NewFinance.Concrete.Contracts
         {
             if (currentTime == Deposit?.Item1)
             {
-                Account!.Balance = -Deposit.Value.Item2;
-                CashAccount.Balance += Deposit.Value.Item2;
+                CashAccount.Balance -= Deposit.Value.Item2;
                 return (currentTime, StartOrSettlementTime!.Value);
             }
 
@@ -60,7 +59,6 @@ namespace NewFinance.Concrete.Contracts
                     ExecuteSettlement();
                 }
                 Account!.Balance = -LoanAmount;
-
                 OnStart?.Invoke();
 
                 return (currentTime, currentTime.AddMonths(1));
@@ -116,6 +114,10 @@ namespace NewFinance.Concrete.Contracts
             {
                 var currentMonthlyPayment = CalculateMonthlyPayment();
                 var principalPayment = currentMonthlyPayment * fractionOfYear * 12 - interest;
+                if (Account!.Balance + principalPayment > 0)  // If the calculated principal payment exceeds the remaining balance, adjust it to only pay off the remaining balance.
+                {
+                    principalPayment = -Account.Balance;
+                }
                 CashAccount.Balance -= interest + principalPayment;
                 Account!.Balance += principalPayment;
                 PaidPrincipalTracker.TrackChange(-principalPayment);
