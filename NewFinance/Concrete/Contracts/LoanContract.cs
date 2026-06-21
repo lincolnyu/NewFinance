@@ -6,6 +6,10 @@ namespace NewFinance.Concrete.Contracts
 {
     public class LoanContract : AccountBindingContract
     {
+        public const string ChangeTrackerPaidInterest = "PaidInterestTracker";
+        public const string ChangeTrackerPaidPrincipal = "PaidPrincipalTracker";
+        public const string ChangeTrackerSettlement = "SettlementTracker";
+
         public Property? Property { get; private set; }
 
         public required Account CashAccount { get; set; }
@@ -25,12 +29,6 @@ namespace NewFinance.Concrete.Contracts
         public decimal? LoanTermYears { get; set; }
 
         public decimal AnnualInterestRate { get; set; }   // e.g. 0.05 for 5%
-
-        public ChangeTracker PaidInterestTracker { get; } = new ChangeTracker();
-
-        public ChangeTracker PaidPrincipalTracker { get; } = new ChangeTracker();
-
-        public ChangeTracker SettlementTracker { get; } = new ChangeTracker();
 
         public Action? OnStart { get; set; }
 
@@ -92,7 +90,8 @@ namespace NewFinance.Concrete.Contracts
             var totalFundsRequired = (Property?.Schedule?.PurchasePrice??0) + PurchaseAdditionalCost - (Deposit?.Item2 ?? 0);
             var cashRequired = totalFundsRequired - LoanAmount;
             executor.ExecuteTransaction(CashAccount, -cashRequired, this, $"Settlement for {Name}");
-            SettlementTracker.TrackChange(-cashRequired);
+
+            executor.ChangeTrackers?.GetOrCreateTracker(this, ChangeTrackerSettlement).TrackChange(-cashRequired);
         }
 
         private decimal CalculateMonthlyPayment()
@@ -142,14 +141,14 @@ namespace NewFinance.Concrete.Contracts
                 executor.ExecuteTransaction(CashAccount, -(interest + principalPayment), this, $"P+I repayment for {Name}");
                 executor.ExecuteTransaction(Account!, principalPayment, this, $"Principal payment for {Name}");
 
-                PaidPrincipalTracker.TrackChange(-principalPayment);
+                executor.ChangeTrackers?[this, ChangeTrackerPaidPrincipal].TrackChange(-principalPayment);
             }
             else
             {
                 executor.ExecuteTransaction(CashAccount, -interest, this, $"Interest payment for {Name}");
             }
 
-            PaidInterestTracker.TrackChange(-interest);
+            executor.ChangeTrackers?[this, ChangeTrackerPaidInterest].TrackChange(-interest);
         }
     }
 }

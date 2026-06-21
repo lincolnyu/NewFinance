@@ -68,8 +68,9 @@ namespace NewFinance.Concrete.Contracts
                             ColumnNames.Add(name);
                         }
                     }
-                    else if (col.Item1 is ChangeTracker tracker)
+                    else if (col.Item1 is Func<ChangeTrackers.Tracker> getTracker || col.Item1 is ChangeTrackers.Tracker)
                     {
+                        var tracker = col.Item1 is Func<ChangeTrackers.Tracker> func ? func() : (ChangeTrackers.Tracker)col.Item1;
                         var name = GetColumnName(col);
                         if (name.EndsWith("ITD"))
                         {
@@ -99,6 +100,20 @@ namespace NewFinance.Concrete.Contracts
                     }
                 }
                 Table.Add(row);
+            }
+
+            if(currentTime.IsEOFY())
+            {
+                foreach (var (obj, name, tracker) in executor.ChangeTrackers?.GetTrackers()?? [])
+                {
+                    foreach (var (subscriber, subscription) in tracker.GetSubscriptions())
+                    {
+                        if (subscriber is not string || (string)subscriber != "PostTaxCsvCollator-ITD")
+                        {
+                            subscription.Reset();
+                        }
+                    }
+                }
             }
 
             var nextEOFY = currentTime.NextEOFY();

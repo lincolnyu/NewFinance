@@ -7,6 +7,8 @@ namespace NewFinance.Concrete.Contracts
     public class PropertySchedule(Property property, DateTime purchaseTime, decimal purchasePrice, DateTime startTime, decimal initialValue, Func<decimal, decimal> getGrowthRate,  Account costPaymentAccount) 
         : Contract(startTime, $"Property Schedule for {property.Name}")
     {
+        public const string ChangeTrackerPropertyFees  = "RentalInducedNetIncomeChangeTracker";
+
         public Property Property { get; } = property;
 
         public DateTime PurchaseTime { get; } = purchaseTime;
@@ -19,8 +21,6 @@ namespace NewFinance.Concrete.Contracts
         public SteadyFlow? RentalInducedNetIncome { get; set; }
 
         #region Additional costs
-
-        public ChangeTracker FeesTracker {get; private set;} = new ChangeTracker();
 
         // Land tax Levy etc.
         public decimal InitialAnnualBaseFeeRate { get; set; }
@@ -48,7 +48,8 @@ namespace NewFinance.Concrete.Contracts
 
             executor.ExecuteTransaction(costPaymentAccount, -fees, this, $"Fees for {Property.Name}");
             // TODO Additional costs such as repair, adhoc...
-            FeesTracker.TrackChange(-fees);
+
+            executor.ChangeTrackers?.GetOrCreateTracker(this, ChangeTrackerPropertyFees).TrackChange(-fees);
 
             if (currentTime == Sale?.Time)
             {

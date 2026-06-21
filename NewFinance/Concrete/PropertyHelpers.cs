@@ -7,6 +7,8 @@ namespace NewFinance.Concrete.Contracts
 {
     public static class PropertyHelpers
     {
+        public const string ChangeTrackerSalesProceedsForTax = "SalesProceedsForTax";
+
         public static Property CreatePropertyWithSchedule(string name, DateTime purchaseTime, decimal purchasePrice, decimal purchaseAdditionalCost, DateTime initialTime, decimal initialValue, decimal growthRate, 
             decimal priceValueCap,  decimal initialBaseAnnualFeeRate, decimal initialRentalFeeRate, decimal levyAndRatesInflationRate, Account cashAccount)
         {
@@ -81,7 +83,8 @@ namespace NewFinance.Concrete.Contracts
             property.Schedule!.Sale =(saleTime, (executor, schedule) =>
             {
                 var salePrice = property.Balance;
-                var salesProceeds = salePrice - saleCost;
+                var salesProceeds = salePrice - saleCost; 
+                var salesCashIn = salesProceeds;
 
                 executor.ExecuteTransaction(property, -property.Balance, schedule, $"Sale of {property.Name}");
 
@@ -89,13 +92,12 @@ namespace NewFinance.Concrete.Contracts
                 {
                     var loanRepayment = loan.Balance;
                     executor.ExecuteTransaction(loan, -loanRepayment, schedule, $"Closure of loan {loan.Name}");
-                    salesProceeds += loanRepayment;
+                    salesCashIn += loanRepayment;
                 }
 
-                property.SalesProceeds = new ChangeTracker();
-                property.SalesProceeds.TrackChange(salesProceeds);
+                executor.ChangeTrackers?.GetOrCreateTracker(property, ChangeTrackerSalesProceedsForTax).TrackChange(salesProceeds);
 
-                executor.ExecuteTransaction(cashAccount, salesProceeds, schedule, $"Proceeds from sale of {property.Name}");
+                executor.ExecuteTransaction(cashAccount, salesCashIn, schedule, $"Proceeds from sale of {property.Name}");
             });
         }
     }

@@ -4,11 +4,11 @@ namespace NewFinance.Common
 {
     public class SteadyFlow(SteadyFlowDescriptor descriptor, Account account, string name) : AccountBindingContract(descriptor.StartTime, account, name)
     {
+        public const string ChangeTrackerInflow = "InflowTracker";
+
         public int CurrentInflowIndex { get; private set; } = -1;
 
         public DateTime NextFlowChangeUpdateDate {get; private set;}
-
-        public ChangeTracker InflowTracker {get; private set;} = new ChangeTracker();
 
         protected TimeSpan? FlowBookingInterval { get; set; }
 
@@ -24,7 +24,6 @@ namespace NewFinance.Common
                 BurstIndex = 0;
                 CurrentInflowIndex = 0;
                 NextFlowChangeUpdateDate = descriptor.Inflows[CurrentInflowIndex].EndTime; // currentTime.NextAnniversayCrossing(descriptor.YearlyFlowChangeUpdateMonth, descriptor.YearlyFlowChangeUpdateDay);
-                InflowTracker.ResetAll();
             }
             else
             {
@@ -62,7 +61,7 @@ namespace NewFinance.Common
             {
                 var burstAmount = Bursts[BurstIndex].Amount;
                 executor.ExecuteTransaction(Account!, burstAmount, this, $"Burst at {currentTime} for {Name}");
-                InflowTracker.TrackChange(burstAmount);
+                executor.ChangeTrackers?[this, ChangeTrackerInflow].TrackChange(burstAmount);
                 BurstIndex++;
 
                 nextBurstTime = BurstIndex < Bursts.Count ? Bursts[BurstIndex].Time : (DateTime?)null;
@@ -78,7 +77,7 @@ namespace NewFinance.Common
         protected virtual void ApplyInflow(ContractExecutor executor, decimal inflow, TimeSpan executionTimeSpan)
         {
             executor.ExecuteTransaction(Account!, inflow, this, $"Inflow for {Name}");
-            InflowTracker.TrackChange(inflow);
+            executor.ChangeTrackers?[this, ChangeTrackerInflow].TrackChange(inflow);
         }
 
         private DateTime GetNextBookedTime(DateTime currentTime)

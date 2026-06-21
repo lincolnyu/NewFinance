@@ -11,6 +11,8 @@ namespace NewFinance.Core
 
         public DateTime? CurrentTime { get; private set;}
 
+        public ChangeTrackers? ChangeTrackers { get; set; }
+
         public DateTime? Execute(DateTime currentTime)
         {
             CurrentTime = currentTime;

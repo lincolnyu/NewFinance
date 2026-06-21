@@ -51,7 +51,7 @@ namespace NewFinance.Core
             transaction.ExecuteAndRecord(executor);
         }
 
-        public static decimal GetTrackedChangeAndReset(this ChangeTracker.Subscription subscription)
+        public static decimal GetTrackedChangeAndReset(this ChangeTrackers.Tracker.Subscription subscription)
         {
             var change = subscription.TrackedChange;
             subscription.Reset();

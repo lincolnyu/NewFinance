@@ -7,9 +7,9 @@ namespace NewFinance.Concrete.Contracts
 {
     public class IndividualTax(TaxIndividual taxPayer, Account cashPaymentAccount) : Contract(null, $"Individual Tax for {taxPayer.Name}")
     {
-        public TaxIndividual TaxPayer { get; } = taxPayer;
+        public const string ChangeTrackerTaxPaid = "TaxPaid";
 
-        public ChangeTracker TaxPaid { get; } = new ChangeTracker();
+        public TaxIndividual TaxPayer { get; } = taxPayer;
 
         private decimal _rentalLossPool = 0m;
 
@@ -40,12 +40,12 @@ namespace NewFinance.Concrete.Contracts
                     (var _, var share) = property.Ownership.TryGetValue(TaxPayer, out var s) ? (TaxPayer, s) : (null, 0m);
 
                     var loan = TaxPayer.Liabilities.OfType<Loan>().FirstOrDefault(loan => loan.Contract!.Property == property);
+                    
+                    var netRentalIncome = executor.ChangeTrackers?[propertySchedule.RentalInducedNetIncome, Common.SteadyFlow.ChangeTrackerInflow][this].GetTrackedChangeAndReset() * share ?? 0m;
 
-                    var netRentalIncome = propertySchedule.RentalInducedNetIncome?.InflowTracker[this].GetTrackedChangeAndReset() * share ?? 0m;
+                    var interestPaid = (-executor.ChangeTrackers?[loan?.Contract!, LoanContract.ChangeTrackerPaidInterest][this].GetTrackedChangeAndReset() ?? 0m) * share;
 
-                    var interestPaid = (-loan?.Contract!.PaidInterestTracker[this].GetTrackedChangeAndReset()) * share ?? 0m;
-
-                    var fees = -propertySchedule.FeesTracker[this].GetTrackedChangeAndReset() * share;
+                    var fees = (-executor.ChangeTrackers?[propertySchedule, PropertySchedule.ChangeTrackerPropertyFees][this].GetTrackedChangeAndReset()?? 0m) * share;
 
                     var netRentalTaxable = netRentalIncome - interestPaid - fees;
 
@@ -59,16 +59,16 @@ namespace NewFinance.Concrete.Contracts
                         }
 
                         decimal? netCapitalGain = null;
-                        if (property.SalesProceeds is not null) // just sold
+
+                        if (executor.ChangeTrackers?.TryGetTracker(property, PropertyHelpers.ChangeTrackerSalesProceedsForTax, out var salesProceedsTracker) == true) // just sold
                         {
-                            var saleProceeds =  property.SalesProceeds!.TotalChange;
-                            var capitalGain = saleProceeds - property.PurchaseAdditionalCost - property.Schedule!.PurchasePrice;
+                            // Do not reset here as it may be used by another tax individual if co-owned.
+                            decimal salesProceeds = salesProceedsTracker![this].TrackedChange;
+                            var capitalGain = salesProceeds - property.PurchaseAdditionalCost - property.Schedule!.PurchasePrice;
                             netCapitalGain = capitalGain * share;
-                            property.SalesProceeds = null;
                         }
                         totalPropertyGain += netRentalTaxable + (netCapitalGain ?? 0);
                     }
-
                 }
             }
 
@@ -86,12 +86,12 @@ namespace NewFinance.Concrete.Contracts
             {
                 if (contract is Employment employment)
                 {
-                    totalIncome += employment.InflowTracker[this].GetTrackedChangeAndReset();
-                    totalPaygWithheld += employment.PaygWithheldTracker[this].GetTrackedChangeAndReset();
+                    totalIncome += executor.ChangeTrackers?[employment, Common.SteadyFlow.ChangeTrackerInflow][this].GetTrackedChangeAndReset() ?? 0m;
+                    totalPaygWithheld += executor.ChangeTrackers?[employment, Employment.ChangeTrackerPaygWithheld][this].GetTrackedChangeAndReset() ?? 0m;
                 }
                 else if (contract is Deductible expense)
                 {
-                    totalDeduction += -expense.InflowTracker[this].GetTrackedChangeAndReset();
+                    totalDeduction += -executor.ChangeTrackers?[expense, Common.SteadyFlow.ChangeTrackerInflow][this].GetTrackedChangeAndReset() ?? 0m;
                 }
             }
 
@@ -102,7 +102,7 @@ namespace NewFinance.Concrete.Contracts
             decimal totalTaxPayable = residentialIncome +  medicareLevy;
             decimal taxAssessmentBalance = totalTaxPayable - totalPaygWithheld;
             executor.ExecuteTransaction(cashPaymentAccount, -taxAssessmentBalance, this, $"Tax assessment for {Name}");
-            TaxPaid.TrackChange(-totalTaxPayable);
+            executor.ChangeTrackers?[this, ChangeTrackerTaxPaid].TrackChange(-totalTaxPayable);
         }
 
         private bool IsNegativeGearingAllowed(Property property, DateTime currentTime)
@@ -127,7 +127,6 @@ namespace NewFinance.Concrete.Contracts
                 return false;
             }
         }
-
 
         internal static decimal CalculateResidentIncomeTax(decimal taxableIncome)
         {

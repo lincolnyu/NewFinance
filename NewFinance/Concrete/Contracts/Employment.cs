@@ -7,6 +7,8 @@ namespace NewFinance.Concrete.Contracts
 {
     public class Employment : SteadyFlow
     {
+        public const string ChangeTrackerPaygWithheld = "PaygWithheld";
+
         private static readonly TimeSpan DefaultPaygWithholdingFrequency = TimeSpan.FromDays(14);
 
         public Employment(SteadyFlowDescriptor descriptor, TaxIndividual individual, Account cashAccount) : base(descriptor, cashAccount, $"Employment of {individual.Name}")
@@ -21,8 +23,6 @@ namespace NewFinance.Concrete.Contracts
             set => FlowBookingInterval = value;
         }
 
-        public ChangeTracker PaygWithheldTracker { get; } = new ChangeTracker();
-
         public bool WithholdPayg { get; set; } = true;
         public TaxIndividual Individual { get; }
 
@@ -31,8 +31,8 @@ namespace NewFinance.Concrete.Contracts
             var paygWithheld = WithholdPayg ? EstimatePaygWithholding(inflow, executionTimeSpan) : 0m;
 
             executor.ExecuteTransaction(Account!, inflow - paygWithheld, this, $"Inflow for {Name}");
-            InflowTracker.TrackChange(inflow);
-            PaygWithheldTracker.TrackChange(paygWithheld);
+            executor.ChangeTrackers?.GetOrCreateTracker(this, ChangeTrackerInflow).TrackChange(inflow);
+            executor.ChangeTrackers?.GetOrCreateTracker(this, ChangeTrackerPaygWithheld).TrackChange(paygWithheld);
         }
 
         internal decimal EstimatePaygWithholding(decimal grossIncome, TimeSpan period)
