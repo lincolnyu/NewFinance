@@ -79,9 +79,9 @@ namespace NewFinance.Concrete.Contracts
                     else if (col.Item1 is ChangeTracker tracker)
                     {
                         var name = GetColumnName(col);
-                        if (name.EndsWith("total"))
+                        if (name.EndsWith("ITD"))
                         {
-                            var val = tracker["PostTaxCsvCollator-total"].TrackedChange;
+                            var val = tracker["PostTaxCsvCollator-ITD"].TrackedChange;
                             _writer?.WriteLine($" '{name}' = {val:0,000.00}");
                             row.Add(val.ToString("0.00"));
                         }
