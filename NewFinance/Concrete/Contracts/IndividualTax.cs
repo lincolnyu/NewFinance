@@ -13,26 +13,6 @@ namespace NewFinance.Concrete.Contracts
 
         private decimal _rentalLossPool = 0m;
 
-        public override void Reset(ContractExecutor executor)
-        {
-            base.Reset(executor);
-
-            _rentalLossPool = 0m;
-
-            foreach (var asset in TaxPayer.Assets)
-            {
-                if (asset is Property property)
-                {
-                    var propertySchedule = property.Schedule!;
-                    propertySchedule.RentalInducedNetIncome?.InflowTracker[this].Reset();
-                    propertySchedule.FeesTracker[this].Reset();
-
-                    var loan = TaxPayer.Liabilities.OfType<Loan>().FirstOrDefault(loan => loan.Contract!.Property == property);
-                    loan?.Contract!.PaidInterestTracker[this].Reset();
-                }
-            }
-        }
-
         protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
         {
             if (currentTime.IsEOFY())

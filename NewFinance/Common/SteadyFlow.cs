@@ -16,14 +16,6 @@ namespace NewFinance.Common
 
         public int BurstIndex { get; private set; } = 0;
 
-        public override void Reset(ContractExecutor executor)
-        {
-            base.Reset(executor);
-            InflowTracker.ResetAll();
-            BurstIndex = 0;
-            CurrentInflowIndex = -1;
-        }
-
         protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
         {
             // If there is a burst at the current time, apply the burst first before applying the steady flow logic, and move to the next burst.

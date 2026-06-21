@@ -1,17 +1,12 @@
 namespace NewFinance.Core
 {
-    public class Account(string name) : IHasName, IHasBalance
+    public class Account(string name, decimal initialBalance = 0m) : IHasName, IHasBalance
     {
         public string Name { get; } = name;
 
-        public decimal Balance { get; private set; }
+        public decimal Balance { get; private set; } = initialBalance;
 
         public Dictionary<Entity, decimal> Ownership { get; } = new Dictionary<Entity, decimal>();
-
-        public void ResetBalance(decimal newBalance = 0m)
-        {
-            Balance = newBalance;
-        }
 
         public class Transaction(string name = "") : IHasName
         {

@@ -11,14 +11,6 @@ namespace NewFinance.Core
 
         public DateTime? CurrentTime { get; private set;}
 
-        public void Reset()
-        {
-            foreach (var c in Contracts)
-            {
-                c.Reset(this);
-            }
-        }
-
         public DateTime? Execute(DateTime currentTime)
         {
             CurrentTime = currentTime;

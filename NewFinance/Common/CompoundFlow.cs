@@ -9,12 +9,6 @@ namespace NewFinance.Common
         /// </summary>
         public TimeSpan Step { get; } = timeStep;
 
-        public override void Reset(ContractExecutor executor)
-        {
-            base.Reset(executor);
-            Account!.ResetBalance();
-        }
-        
         protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
         {
             if (currentTime == StartTime)

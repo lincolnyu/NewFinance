@@ -54,21 +54,6 @@ namespace NewFinance.Core
             return bookedTime;
         }
 
-
-        /// <summary>
-        ///  It runs both at the beginning and at the end of the simulation.
-        ///  So it needs to both
-        ///   - Reset the states that the contract execution cares about.
-        ///   - Reset what has been changed by the contract execution and therefore may affect future simulations if not reset.
-        /// </summary>
-        /// <param name="executor"></param>
-        public virtual void Reset(ContractExecutor executor)
-        {
-            LastProcessedTime = null;
-            LastBookedTime = null;
-            IsCompleted = false;
-        }
-
         protected abstract (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime);
     }
 }

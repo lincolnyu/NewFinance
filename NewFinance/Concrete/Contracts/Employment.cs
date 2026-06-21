@@ -26,12 +26,6 @@ namespace NewFinance.Concrete.Contracts
         public bool WithholdPayg { get; set; } = true;
         public TaxIndividual Individual { get; }
 
-        public override void Reset(ContractExecutor executor)
-        {
-            base.Reset(executor);
-            PaygWithheldTracker.ResetAll();
-        }
-
         protected override void ApplyInflow(ContractExecutor executor, decimal inflow, TimeSpan executionTimeSpan)
         {
             var paygWithheld = WithholdPayg ? EstimatePaygWithholding(inflow, executionTimeSpan) : 0m;

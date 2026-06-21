@@ -23,14 +23,6 @@ namespace NewFinance.Concrete.Contracts
             return col.Item2;
         }
 
-        public override void Reset(ContractExecutor executor)
-        {
-            base.Reset(executor);
-
-            Table.Clear();
-            ColumnNames.Clear();
-        }
-
         protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
         {
             var isAdditionalReportDate = AdditionalReportDates.Contains(currentTime);
