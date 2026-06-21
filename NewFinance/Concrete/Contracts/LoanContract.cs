@@ -30,6 +30,8 @@ namespace NewFinance.Concrete.Contracts
 
         public ChangeTracker PaidPrincipalTracker { get; } = new ChangeTracker();
 
+        public ChangeTracker SettlementTracker { get; } = new ChangeTracker();
+
         public Action? OnStart { get; set; }
 
         public LoanContract(Loan loanAccount, Property? property, (DateTime, decimal)? deposit, DateTime? startOrSettlemntTime, decimal loanAmount, bool alreadySettled) : base(deposit?.Item1 ?? startOrSettlemntTime ?? property!.Schedule!.StartTime!.Value, loanAccount, 
@@ -87,9 +89,10 @@ namespace NewFinance.Concrete.Contracts
 
         private void ExecuteSettlement(ContractExecutor executor)
         {
-            var totalFundsRequired = (Property?.Balance??0) + PurchaseAdditionalCost - (Deposit?.Item2 ?? 0);
+            var totalFundsRequired = (Property?.Schedule?.PurchasePrice??0) + PurchaseAdditionalCost - (Deposit?.Item2 ?? 0);
             var cashRequired = totalFundsRequired - LoanAmount;
             executor.ExecuteTransaction(CashAccount, -cashRequired, this, $"Settlement for {Name}");
+            SettlementTracker.TrackChange(-cashRequired);
         }
 
         private decimal CalculateMonthlyPayment()
