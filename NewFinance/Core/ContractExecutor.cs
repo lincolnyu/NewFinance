@@ -13,6 +13,8 @@ namespace NewFinance.Core
 
         public ChangeTrackers? ChangeTrackers { get; set; }
 
+        public Action<Account.Transaction>? TransactionStarted { get; set; }
+
         public DateTime? Execute(DateTime currentTime)
         {
             CurrentTime = currentTime;

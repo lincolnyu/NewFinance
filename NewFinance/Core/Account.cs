@@ -25,6 +25,9 @@ namespace NewFinance.Core
             public void ExecuteAndRecord(ContractExecutor executor)
             {
                 ExecutedTime = executor.CurrentTime!.Value;
+                
+                executor.TransactionStarted?.Invoke(this);
+
                 Account.Balance += Amount;
                 BalanceAfterTransaction = Account.Balance;
                 executor.Transactions.Add(this);
