@@ -18,7 +18,7 @@ namespace NewFinance.Concrete.Contracts
         public CompoundFlow PropertyValue { get; private set; } = new CompoundFlow(startTime, initialValue, getGrowthRate, TimeSpan.FromDays((double)Constants.DaysPerYear), property, $"Property Value for {property.Name}");
 
         // Rent minus the fees proportional to rent (agent fees etc.)
-        public SteadyFlow? RentalInducedNetIncome { get; set; }
+        public SteadyFlow? RentInducedStream { get; set; }
 
         #region Additional costs
 
@@ -27,7 +27,7 @@ namespace NewFinance.Concrete.Contracts
 
         public decimal InitialAnnualRentalFeeRate { get; set; }
 
-        public bool IsInvestmentProperty => RentalInducedNetIncome is not null;
+        public bool IsInvestmentProperty => RentInducedStream is not null;
 
         public Inflation FeeInflation { get; set; }
 
@@ -37,7 +37,7 @@ namespace NewFinance.Concrete.Contracts
 
         protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
         {
-            var subcontracts = RentalInducedNetIncome is not null ? new Contract[] { PropertyValue, RentalInducedNetIncome } : [PropertyValue];
+            var subcontracts = RentInducedStream is not null ? new Contract[] { PropertyValue, RentInducedStream } : [PropertyValue];
             var bookedTime = executor.ExecuteContracts(subcontracts, currentTime);
 
             var levyInflation = FeeInflation.GetRelativeInflationFactor(startTime, currentTime);
