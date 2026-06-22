@@ -65,10 +65,10 @@ namespace NewFinance.Common
                 BurstIndex++;
 
                 nextBurstTime = BurstIndex < Bursts.Count ? Bursts[BurstIndex].Time : (DateTime?)null;
-                if (nextBurstTime is not null && nextBurstTime < nextBookedTime)
-                {
-                    nextBookedTime = nextBurstTime.Value;
-                }
+            }
+            if (nextBurstTime is not null && nextBurstTime < nextBookedTime)
+            {
+                nextBookedTime = nextBurstTime.Value;
             }
 
             return (currentTime, nextBookedTime);

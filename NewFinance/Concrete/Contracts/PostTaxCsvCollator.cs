@@ -44,12 +44,12 @@ namespace NewFinance.Concrete.Contracts
                         {
                             if (account.Ownership.TryGetValue(entity, out var share))
                             {
-                                _writer?.WriteLine($" '{account.Name}' balance = {account.Balance * share:0,000.00}");
+                                _writer?.WriteLine($" '{account.Name}' balance = {account.Balance * share:N2}");
                                 row.Add(account.Balance * share);
                             }
                             else
                             {
-                                _writer?.WriteLine($" '{account.Name}' balance = {account.Balance:0,000.00}");
+                                _writer?.WriteLine($" '{account.Name}' balance = {account.Balance:N2}");
                                 row.Add(account.Balance);
                             }
                             if (populateColumNames)
@@ -61,7 +61,7 @@ namespace NewFinance.Concrete.Contracts
                     else if (col.Item1 is IHasBalance balanceItem)
                     {
                         var name = GetColumnName(col);
-                        _writer?.WriteLine($" '{name}' balance = {balanceItem.Balance:0,000.00}");
+                        _writer?.WriteLine($" '{name}' balance = {balanceItem.Balance:N2}");
                         row.Add(balanceItem.Balance);
                         if (populateColumNames)
                         {
@@ -75,13 +75,13 @@ namespace NewFinance.Concrete.Contracts
                         if (name.EndsWith("ITD"))
                         {
                             var val = tracker["PostTaxCsvCollator-ITD"].TrackedChange;
-                            _writer?.WriteLine($" '{name}' = {val:0,000.00}");
+                            _writer?.WriteLine($" '{name}' = {val:N2}");
                             row.Add(val);
                         }
                         else
                         {
                             var val = tracker["PostTaxCsvCollator"].GetTrackedChangeAndReset();
-                            _writer?.WriteLine($" '{name}' = {val:0,000.00}");
+                            _writer?.WriteLine($" '{name}' = {val:N2}");
                             row.Add(val);
                         }
                         if (populateColumNames)
