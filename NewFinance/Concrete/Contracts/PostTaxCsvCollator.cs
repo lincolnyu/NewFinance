@@ -6,7 +6,7 @@ namespace NewFinance.Concrete.Contracts
     {
         private readonly TextWriter? _writer = writer;
 
-        public List<List<string>> Table { get; } = [];
+        public List<List<object?>> Table { get; } = [];
 
         public List<(object, string)> ReportedItems {get;} = [];
 
@@ -30,7 +30,7 @@ namespace NewFinance.Concrete.Contracts
             {
                 var populateColumNames = ColumnNames.Count == 0;
 
-                var row = new List<string>() {  
+                var row = new List<object?>() {  
                     isAdditionalReportDate? 
                         currentTime.ToString("yyyy-MM-dd") : 
                         $"EOF {currentTime.Year}"
@@ -45,12 +45,12 @@ namespace NewFinance.Concrete.Contracts
                             if (account.Ownership.TryGetValue(entity, out var share))
                             {
                                 _writer?.WriteLine($" '{account.Name}' balance = {account.Balance * share:0,000.00}");
-                                row.Add((account.Balance * share).ToString("0.00"));
+                                row.Add(account.Balance * share);
                             }
                             else
                             {
                                 _writer?.WriteLine($" '{account.Name}' balance = {account.Balance:0,000.00}");
-                                row.Add(account.Balance.ToString("0.00"));
+                                row.Add(account.Balance);
                             }
                             if (populateColumNames)
                             {
@@ -62,7 +62,7 @@ namespace NewFinance.Concrete.Contracts
                     {
                         var name = GetColumnName(col);
                         _writer?.WriteLine($" '{name}' balance = {balanceItem.Balance:0,000.00}");
-                        row.Add(balanceItem.Balance.ToString("0.00"));
+                        row.Add(balanceItem.Balance);
                         if (populateColumNames)
                         {
                             ColumnNames.Add(name);
@@ -76,13 +76,13 @@ namespace NewFinance.Concrete.Contracts
                         {
                             var val = tracker["PostTaxCsvCollator-ITD"].TrackedChange;
                             _writer?.WriteLine($" '{name}' = {val:0,000.00}");
-                            row.Add(val.ToString("0.00"));
+                            row.Add(val);
                         }
                         else
                         {
                             var val = tracker["PostTaxCsvCollator"].GetTrackedChangeAndReset();
                             _writer?.WriteLine($" '{name}' = {val:0,000.00}");
-                            row.Add(val.ToString("0.00"));
+                            row.Add(val);
                         }
                         if (populateColumNames)
                         {
