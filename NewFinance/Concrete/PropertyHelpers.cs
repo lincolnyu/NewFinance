@@ -78,7 +78,7 @@ namespace NewFinance.Concrete.Contracts
             return captialGain;
         }
 
-        public static void SellPropety(Property property, decimal saleCost, Loan? loan, DateTime saleTime, Account cashAccount)
+        public static void SellPropety(Property property, decimal saleCost, Loan? loan, DateTime saleTime, Account cashAccount, Action<decimal>? onSold)
         {
             property.Schedule!.Sale =(saleTime, (executor, schedule) =>
             {
@@ -98,6 +98,8 @@ namespace NewFinance.Concrete.Contracts
                 executor.ChangeTrackers?.GetOrCreateTracker(property, ChangeTrackerSalesProceedsForTax).TrackChange(salesProceeds);
 
                 executor.ExecuteTransaction(cashAccount, salesCashIn, schedule, $"Proceeds from sale of {property.Name}");
+                
+                onSold?.Invoke(salesCashIn);
             });
         }
     }

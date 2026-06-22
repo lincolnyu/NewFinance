@@ -8,7 +8,6 @@ namespace NewFinance.Concrete.Contracts
     {
         public const string ChangeTrackerPaidInterest = "PaidInterestTracker";
         public const string ChangeTrackerPaidPrincipal = "PaidPrincipalTracker";
-        public const string ChangeTrackerSettlement = "SettlementTracker";
 
         public Property? Property { get; private set; }
 
@@ -30,7 +29,7 @@ namespace NewFinance.Concrete.Contracts
 
         public decimal AnnualInterestRate { get; set; }   // e.g. 0.05 for 5%
 
-        public Action? OnStart { get; set; }
+        public Action<LoanContract, ContractExecutor, decimal>? OnSettlement { get; set; }
 
         public LoanContract(Loan loanAccount, Property? property, (DateTime, decimal)? deposit, DateTime? startOrSettlemntTime, decimal loanAmount, bool alreadySettled) : base(deposit?.Item1 ?? startOrSettlemntTime ?? property!.Schedule!.StartTime!.Value, loanAccount, 
             string.IsNullOrEmpty(loanAccount.Name) ? (property is null? "Loan" : $"Loan for {property?.Name}")  : loanAccount.Name)
@@ -59,7 +58,6 @@ namespace NewFinance.Concrete.Contracts
                     ExecuteSettlement(executor);
                 }
                 executor.ExecuteTransaction(Account!, -LoanAmount, this, $"Loan amount for {Name}");
-                OnStart?.Invoke();
 
                 return (currentTime, currentTime.AddMonths(1));
             }
@@ -91,7 +89,7 @@ namespace NewFinance.Concrete.Contracts
             var cashRequired = totalFundsRequired - LoanAmount;
             executor.ExecuteTransaction(CashAccount, -cashRequired, this, $"Settlement for {Name}");
 
-            executor.ChangeTrackers?.GetOrCreateTracker(this, ChangeTrackerSettlement).TrackChange(-cashRequired);
+            OnSettlement?.Invoke(this, executor, -cashRequired);
         }
 
         private decimal CalculateMonthlyPayment()
