@@ -72,13 +72,13 @@ namespace NewFinance.Core
                 return _trackers.Select(kvp => (kvp.Key, kvp.Value));
             }
 
-            public Subscription this[object subscriber] => GetOrCreateTracker(subscriber);
+            public Subscription this[object subscriber] => GetOrCreateTracker(subscriber, true);
 
-            public Subscription GetOrCreateTracker(object subscriber)
+            public Subscription GetOrCreateTracker(object subscriber, bool trackExistingChange)
             {
                 if (!_trackers.TryGetValue(subscriber, out var tracker))
                 {
-                    tracker = new Subscription(TotalChange);
+                    tracker = new Subscription(trackExistingChange ? TotalChange : 0);
                     _trackers[subscriber] = tracker;
                 }
                 return tracker;

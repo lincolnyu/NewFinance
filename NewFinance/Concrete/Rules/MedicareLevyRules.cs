@@ -28,7 +28,7 @@ namespace NewFinance.Concrete.Rules
         /// Calculates only the Medicare Levy (2%). 
         /// MLS is ignored because we assume adequate private hospital cover.
         /// </summary>
-        public decimal Calculate(decimal taxableIncome, TaxIndividual individual)
+        public decimal CalculateFY26(decimal taxableIncome, TaxIndividual? individual)
         {
             taxableIncome = Math.Max(0, taxableIncome);
 
@@ -40,10 +40,10 @@ namespace NewFinance.Concrete.Rules
             return levy;
         }
 
-        private decimal CalculateMedicareLevyInternal(decimal taxableIncome, TaxIndividual ind)
+        private decimal CalculateMedicareLevyInternal(decimal taxableIncome, TaxIndividual? individual)
         {
-            bool isFamily = ind.Family is not null;
-            int numChildren = ind.Family?.DependencyCount ?? 0; // we assume there are NO non-family dependents here.
+            bool isFamily = individual?.Family is not null;
+            int numChildren = individual?.Family?.DependencyCount ?? 0; // we assume there are NO non-family dependents here.
 
             decimal lowerThreshold;
             decimal upperThreshold;

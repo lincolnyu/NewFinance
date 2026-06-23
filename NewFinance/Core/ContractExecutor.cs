@@ -9,11 +9,11 @@ namespace NewFinance.Core
 
         public DateTime? NextForcedTime { get; set; }
 
-        public DateTime? CurrentTime { get; private set;}
-
         public ChangeTrackers? ChangeTrackers { get; set; }
 
         public Action<Account.Transaction>? TransactionStarted { get; set; }
+
+        public DateTime CurrentTime { get; private set; }
 
         public DateTime? Execute(DateTime currentTime)
         {

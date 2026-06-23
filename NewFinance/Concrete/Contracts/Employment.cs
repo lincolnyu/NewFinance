@@ -28,14 +28,14 @@ namespace NewFinance.Concrete.Contracts
 
         protected override void ApplyInflow(ContractExecutor executor, decimal inflow, TimeSpan executionTimeSpan)
         {
-            var paygWithheld = WithholdPayg ? EstimatePaygWithholding(inflow, executionTimeSpan) : 0m;
+            var paygWithheld = WithholdPayg ? EstimatePaygWithholding(inflow, executionTimeSpan, Individual) : 0m;
 
             executor.ExecuteTransaction(Account!, inflow - paygWithheld, this, $"Inflow for {Name}");
             executor.ChangeTrackers?.GetOrCreateTracker(this, ChangeTrackerInflow).TrackChange(inflow);
             executor.ChangeTrackers?.GetOrCreateTracker(this, ChangeTrackerPaygWithheld).TrackChange(paygWithheld);
         }
 
-        internal decimal EstimatePaygWithholding(decimal grossIncome, TimeSpan period)
+        static internal decimal EstimatePaygWithholding(decimal grossIncome, TimeSpan period, TaxIndividual? individual)
         {
             if (grossIncome <= 0 || period.TotalDays <= 0)
             {
@@ -44,7 +44,7 @@ namespace NewFinance.Concrete.Contracts
 
             var fractionOfYear = (decimal)(period.TotalDays / (double)Constants.DaysPerYear);
             var annualisedIncome = grossIncome / fractionOfYear;
-            var annualTax = IndividualTax.CalculateResidentIncomeTax(annualisedIncome) +  new MedicareLevyRules().Calculate(annualisedIncome, Individual);
+            var annualTax = IndividualTax.CalculateResidentIncomeTax(annualisedIncome) +  new MedicareLevyRules().CalculateFY26(annualisedIncome, individual);
 
             return annualTax * fractionOfYear;
         }

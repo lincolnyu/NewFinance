@@ -2,6 +2,7 @@ namespace NewFinance.Tests;
 
 using NewFinance.Concrete.Contracts;
 using NewFinance.Concrete.Entities;
+using NewFinance.Concrete.Rules;
 using NewFinance.Core;
 
 public class IndividualTaxTests
@@ -22,12 +23,12 @@ public class IndividualTaxTests
 
     [Theory]
     [InlineData(26_000, 0)]
-    [InlineData(27_000, 100)]
-    [InlineData(32_500, 650)]
+    [InlineData(28_000, 77.80)]
+    [InlineData(32_500, 527.80)]
     [InlineData(100_000, 2_000)]
-    public void CalculateMedicareLevy_AppliesLowIncomePhaseIn(decimal taxableIncome, decimal expectedLevy)
+    public void CalculateMedicareLevyFY26_AppliesLowIncomePhaseIn(decimal taxableIncome, decimal expectedLevy)
     {
-        var levy = IndividualTax.CalculateMedicareLevy(taxableIncome);
+        var levy = new MedicareLevyRules().CalculateFY26(taxableIncome, null);
 
         Assert.Equal(expectedLevy, levy);
     }
@@ -35,7 +36,7 @@ public class IndividualTaxTests
     [Fact]
     public void EstimatePaygWithholding_AnnualisesPeriodIncome()
     {
-        var withholding = Employment.EstimatePaygWithholding(10_000m, TimeSpan.FromDays((double)Constants.DaysPerYear / 10));
+        var withholding = Employment.EstimatePaygWithholding(10_000m, TimeSpan.FromDays((double)Constants.DaysPerYear / 10), null);
 
         Assert.Equal(2_278.80m, withholding);
     }
@@ -47,16 +48,23 @@ public class IndividualTaxTests
         var cash = new Account("Cash");
         var employment = new Employment(
             FlowHelpers.ConstantFlowDescriptor(new DateTime(2025, 1, 1), 0m),
+            taxpayer,
             cash);
         var tax = new IndividualTax(taxpayer, cash);
 
-        taxpayer.TaxableContracts.Add(employment);
-        employment.InflowTracker.TrackChange(100_000m);
-        employment.PaygWithheldTracker.TrackChange(25_000m);
+        var executor = new ContractExecutor();
+        var changeTrackers  = new ChangeTrackers();
 
-        tax.Execute(new ContractExecutor(), new DateTime(2025, 6, 30));
+        taxpayer.TaxableContracts.Add(employment);
+        changeTrackers.GetOrCreateTracker(employment, Common.SteadyFlow.ChangeTrackerInflow).TrackChange(100_000m);
+        changeTrackers.GetOrCreateTracker(employment, Employment.ChangeTrackerPaygWithheld).TrackChange(25_000m);
+        
+        executor.Contracts.Add(tax);
+        executor.ChangeTrackers = changeTrackers;
+        executor.Execute(new DateTime(2025, 6, 30));
 
         Assert.Equal(2_212m, cash.Balance);
-        Assert.Equal(-2_212m, tax.TaxPaid.TotalChange);
+        
+        Assert.Equal(-22_788m, changeTrackers.GetOrCreateTracker(tax, IndividualTax.ChangeTrackerTaxPaid).TotalChange);
     }
 }

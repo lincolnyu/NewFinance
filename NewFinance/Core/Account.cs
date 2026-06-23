@@ -24,7 +24,7 @@ namespace NewFinance.Core
 
             public void ExecuteAndRecord(ContractExecutor executor)
             {
-                ExecutedTime = executor.CurrentTime!.Value;
+                ExecutedTime = executor.CurrentTime;
                 
                 executor.TransactionStarted?.Invoke(this);
 

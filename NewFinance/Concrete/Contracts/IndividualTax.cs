@@ -41,11 +41,11 @@ namespace NewFinance.Concrete.Contracts
 
                     var loan = TaxPayer.Liabilities.OfType<Loan>().FirstOrDefault(loan => loan.Contract!.Property == property);
                     
-                    var netRentalIncome = executor.ChangeTrackers?[propertySchedule.RentInducedStream, Common.SteadyFlow.ChangeTrackerInflow][this].GetTrackedChangeAndReset() * share ?? 0m;
+                    var netRentalIncome = executor.ChangeTrackers?[propertySchedule.YieldInducedStream, Common.SteadyFlow.ChangeTrackerInflow][this].GetTrackedChangeAndReset() * share ?? 0m;
 
                     var interestPaid = (-executor.ChangeTrackers?[loan?.Contract!, LoanContract.ChangeTrackerPaidInterest][this].GetTrackedChangeAndReset() ?? 0m) * share;
 
-                    var fees = (-executor.ChangeTrackers?[propertySchedule, PropertySchedule.ChangeTrackerPropertyFees][this].GetTrackedChangeAndReset()?? 0m) * share;
+                    var fees = (-executor.ChangeTrackers?[propertySchedule, InvestmentSchedule.ChangeTrackerPropertyFees][this].GetTrackedChangeAndReset()?? 0m) * share;
 
                     var netRentalTaxable = netRentalIncome - interestPaid - fees;
 
@@ -98,7 +98,7 @@ namespace NewFinance.Concrete.Contracts
             // Final tax workout
             decimal totalTaxableIncome = Math.Max(0, totalIncome + totalPropertyGain - totalDeduction);
             decimal residentialIncome = CalculateResidentIncomeTax(totalTaxableIncome);
-            decimal medicareLevy = new MedicareLevyRules().Calculate(totalTaxableIncome, TaxPayer);
+            decimal medicareLevy = new MedicareLevyRules().CalculateFY26(totalTaxableIncome, TaxPayer);
             decimal totalTaxPayable = residentialIncome +  medicareLevy;
             decimal taxAssessmentBalance = totalTaxPayable - totalPaygWithheld;
             executor.ExecuteTransaction(cashPaymentAccount, -taxAssessmentBalance, this, $"Tax assessment for {Name}");
