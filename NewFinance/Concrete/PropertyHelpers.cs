@@ -39,11 +39,11 @@ namespace NewFinance.Concrete.Contracts
             return new SteadyFlow(rentalNetInFlowDescriptor, cashAccount, name);
         }
 
-        public static Loan CreatePersonalLoan(string name, DateTime startTime, decimal loanAmount, Account cashAccount, decimal? loanTermYears, decimal annualInterestRate, bool alreadySettled)
+        public static Loan CreatePersonalLoan(string name, DateTime startTime, decimal loanAmount, Account cashAccount, decimal? loanTermYears, decimal annualInterestRate)
         {
             var loan = new Loan($"Personal Loan {name}");
 
-            var loanContract = new LoanContract(loan, null!, null, startTime, loanAmount, alreadySettled)
+            var loanContract = new LoanContract(loan, null!, null, startTime, loanAmount)
             {
                 CashAccount = cashAccount,
                 LoanTermYears = loanTermYears,
@@ -54,11 +54,11 @@ namespace NewFinance.Concrete.Contracts
             return loan;
         }
 
-        public static Loan CreateLoan(Property property, (DateTime, decimal)? deposit, decimal loanAmount, Account cashAccount, decimal offsetRatio, decimal? loanTermYears, decimal annualInterestRate, bool alreadySettled)
+        public static Loan CreateLoan(Property property, decimal? deposit, DateTime settlementTime, decimal loanAmount, Account cashAccount, decimal offsetRatio, decimal? loanTermYears, decimal annualInterestRate)
         {
             var loan = new Loan($"Loan for {property.Name}");
 
-            var loanContract = new LoanContract(loan, property, deposit, null, loanAmount, alreadySettled)
+            var loanContract = new LoanContract(loan, property, deposit, settlementTime, loanAmount)
             {
                 CashAccount = cashAccount,
                 OffsetRatio = offsetRatio,

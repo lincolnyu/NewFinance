@@ -4,6 +4,19 @@ using NewFinance.Core;
 
 namespace NewFinance.Concrete.Contracts
 {
+    /// <summary>
+    /// Schedule for investment. It tracks the value of the property, the yield and the fees.
+    /// </summary>
+    /// <param name="investment">The investment associated with this schedule.</param>
+    /// <param name="purchaseTime">The time when the investment was purchased. For property it is the time when the contract is exchanged NOT the settlement date.</param>
+    /// <param name="purchasePrice">The price at which the investment was purchased.</param>
+    /// <param name="startTime">
+    ///     The start time of this contract in simulation, which is the start of its value tracking. Normally no later than yield start time which is set up separately. 
+    ///     It usually is the max of purchaseTime and simulation start time.
+    /// </param>
+    /// <param name="initialValue">The initial value of the investment (at the `startTime`).</param>
+    /// <param name="getGrowthRate">A function to get the growth rate of the investment.`</param>
+    /// <param name="costPaymentAccount">Account to pay for the fees.</param>
     public abstract class InvestmentSchedule(Investment investment, DateTime purchaseTime, decimal purchasePrice, DateTime startTime, decimal initialValue, Func<decimal, decimal> getGrowthRate,  Account costPaymentAccount) 
         : Contract(startTime, $"Schedule for {investment.Name}")
     {
@@ -19,7 +32,6 @@ namespace NewFinance.Concrete.Contracts
 
         // Rent minus the fees proportional to rent (agent fees etc.)
         public SteadyFlow? YieldInducedStream { get; set; }
-
 
         #region Additional costs
 

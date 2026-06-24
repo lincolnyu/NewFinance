@@ -13,15 +13,13 @@ namespace NewFinance.Concrete.Contracts
 
         public required Account CashAccount { get; set; }
 
-        public (DateTime, decimal)? Deposit {get;}
+        public decimal? Deposit {get;}  // Paid at purchase time.
 
-        public DateTime? StartOrSettlementTime {get;}
+        public DateTime? SettlementTime {get;}
 
         public decimal LoanAmount { get; set; }
 
         public decimal PurchaseAdditionalCost{ get; set; }
-
-        public bool AlreadySettled { get; }
 
         public decimal OffsetRatio { get; set; }
 
@@ -31,32 +29,52 @@ namespace NewFinance.Concrete.Contracts
 
         public Action<LoanContract, ContractExecutor, decimal>? OnSettlement { get; set; }
 
-        public LoanContract(Loan loanAccount, Property? property, (DateTime, decimal)? deposit, DateTime? startOrSettlemntTime, decimal loanAmount, bool alreadySettled) : base(deposit?.Item1 ?? startOrSettlemntTime ?? property!.Schedule!.StartTime!.Value, loanAccount, 
+        public LoanContract(Loan loanAccount, Property? property, decimal? deposit, DateTime? settlementTime, decimal loanAmount) 
+            : base(GetStartTime(property, deposit, settlementTime), loanAccount, 
             string.IsNullOrEmpty(loanAccount.Name) ? (property is null? "Loan" : $"Loan for {property?.Name}")  : loanAccount.Name)
         {
             Deposit = deposit;
-            StartOrSettlementTime = startOrSettlemntTime ?? property!.Schedule!.StartTime!.Value;
-            System.Diagnostics.Debug.Assert(deposit is not null && StartOrSettlementTime is not null && StartOrSettlementTime > deposit.Value.Item1 || deposit is null);
+            SettlementTime = settlementTime ?? property!.Schedule!.StartTime!.Value;
             Property = property;
             LoanAmount = loanAmount;
             PurchaseAdditionalCost = property?.PurchaseAdditionalCost ?? 0;
-            AlreadySettled = alreadySettled;
+            System.Diagnostics.Debug.Assert(deposit is not null && SettlementTime is not null && Property!.Schedule!.PurchaseTime <= SettlementTime || deposit is null);
+        }
+
+        private static DateTime GetStartTime(Property? property, decimal? deposit, DateTime? settlementTime)
+        {
+            if(deposit is not null)
+            {
+                var purchaseTime = property!.Schedule!.PurchaseTime;
+                return purchaseTime;
+            }
+            return settlementTime ?? property!.Schedule!.StartTime!.Value;
         }
 
         protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
         {
-            if (currentTime == Deposit?.Item1)
+            if (Deposit is not null)
             {
-                executor.ExecuteTransaction(CashAccount, -Deposit.Value.Item2, this, $"Deposit for {Name}");
-                return (currentTime, StartOrSettlementTime!.Value);
+                var purchaseTime = Property!.Schedule!.PurchaseTime;
+                if (currentTime == purchaseTime)
+                {
+                    System.Diagnostics.Debug.Assert(purchaseTime <= SettlementTime);
+                    executor.ExecuteTransaction(CashAccount, -Deposit.Value, this, $"Deposit for {Name}");
+                    if (purchaseTime < SettlementTime)
+                    {
+                        return (currentTime, SettlementTime!.Value);
+                    }
+                }
             }
 
-            if (currentTime == StartOrSettlementTime)
+            if (currentTime == SettlementTime)
             {
-                if (!AlreadySettled)
-                {
-                    ExecuteSettlement(executor);
-                }
+                var totalFundsRequired = (Property?.Schedule?.PurchasePrice??0) + PurchaseAdditionalCost - (Deposit ?? 0);
+                var cashRequired = totalFundsRequired - LoanAmount;
+                executor.ExecuteTransaction(CashAccount, -cashRequired, this, $"Settlement for {Name}");
+
+                OnSettlement?.Invoke(this, executor, -cashRequired);
+                
                 executor.ExecuteTransaction(Account!, -LoanAmount, this, $"Loan amount for {Name}");
 
                 return (currentTime, currentTime.AddMonths(1));
@@ -81,15 +99,6 @@ namespace NewFinance.Concrete.Contracts
                 }
                 return (lastProcessedTime!.Value, newTime);
             }
-        }
-
-        private void ExecuteSettlement(ContractExecutor executor)
-        {
-            var totalFundsRequired = (Property?.Schedule?.PurchasePrice??0) + PurchaseAdditionalCost - (Deposit?.Item2 ?? 0);
-            var cashRequired = totalFundsRequired - LoanAmount;
-            executor.ExecuteTransaction(CashAccount, -cashRequired, this, $"Settlement for {Name}");
-
-            OnSettlement?.Invoke(this, executor, -cashRequired);
         }
 
         private decimal CalculateMonthlyPayment()

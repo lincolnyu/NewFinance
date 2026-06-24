@@ -1,4 +1,3 @@
-using NewFinance.Common;
 using NewFinance.Concrete.Accounts;
 using NewFinance.Core;
 
@@ -13,7 +12,6 @@ namespace NewFinance.Concrete.Contracts
         public decimal InitialAnnualRentalFeeRate { get; set; }
 
         public bool IsInvestmentProperty => YieldInducedStream is not null;
-
 
         public override decimal InitialFeeRate        
         {
