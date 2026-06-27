@@ -3,7 +3,7 @@ using NewFinance.Core;
 
 namespace NewFinance.Concrete.Contracts
 {
-    public class SuperContribution(SteadyFlowDescriptor descriptor, Account cashAccount) : SteadyFlow(descriptor, cashAccount, "Super Contribution")
+    public class SuperContribution(BandedFlowDescriptor descriptor, Account cashAccount) : BandedFlow(descriptor, cashAccount, "Super Contribution")
     {
     }
 }

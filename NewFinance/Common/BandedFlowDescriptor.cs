@@ -1,6 +1,6 @@
 namespace NewFinance.Common
 {
-    public record struct SteadyFlowDescriptor(DateTime StartTime, List<(decimal DailyRate, DateTime EndTime)> Inflows)
+    public record struct BandedFlowDescriptor(DateTime StartTime, List<(decimal DailyRate, DateTime EndTime)> Inflows)
     {
         private DateTime? GetStartTime(int index)
         {
@@ -14,13 +14,13 @@ namespace NewFinance.Common
             }
         }
 
-        public SteadyFlowDescriptor Add(SteadyFlowDescriptor other)
+        public BandedFlowDescriptor Add(BandedFlowDescriptor other)
         {
             var combinedInflows = Combine(other).Select(x => (DailyRate: (x.Rate1 ?? 0) + (x.Rate2 ?? 0), x.EndTIme)).ToList();
-            return new SteadyFlowDescriptor(StartTime < other.StartTime ? StartTime : other.StartTime, combinedInflows);  
+            return new BandedFlowDescriptor(StartTime < other.StartTime ? StartTime : other.StartTime, combinedInflows);  
         }
 
-        public IEnumerable<(decimal? Rate1, decimal? Rate2, DateTime StartTime, DateTime EndTIme)> Combine(SteadyFlowDescriptor other)
+        public IEnumerable<(decimal? Rate1, decimal? Rate2, DateTime StartTime, DateTime EndTIme)> Combine(BandedFlowDescriptor other)
         {
             int thisBucketIndex = 0;
             int thatBucketIndex = 0;

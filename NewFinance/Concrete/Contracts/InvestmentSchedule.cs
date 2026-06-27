@@ -31,7 +31,7 @@ namespace NewFinance.Concrete.Contracts
         public CompoundFlow Value { get; private set; } = new CompoundFlow(startTime, initialValue, getGrowthRate, TimeSpan.FromDays((double)Constants.DaysPerYear), investment, $"Property Value for {investment.Name}");
 
         // Rent minus the fees proportional to rent (agent fees etc.)
-        public SteadyFlow? YieldInducedStream { get; set; }
+        public BandedFlow? YieldInducedStream { get; set; }
 
         #region Additional costs
 

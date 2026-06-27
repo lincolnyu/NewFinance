@@ -2,7 +2,7 @@ using NewFinance.Core;
 
 namespace NewFinance.Common
 {
-    public class SteadyFlow(SteadyFlowDescriptor descriptor, Account account, string name) : AccountBindingContract(descriptor.StartTime, account, name)
+    public class BandedFlow(BandedFlowDescriptor descriptor, Account account, string name) : AccountBindingContract(descriptor.StartTime, account, name)
     {
         public const string ChangeTrackerInflow = "InflowTracker";
 

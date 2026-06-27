@@ -27,7 +27,7 @@ namespace NewFinance.Concrete.Contracts
             return property;
         }
 
-        public static SteadyFlow CreatePropertyRentalStream(string name, DateTime startTime, decimal initialYearlyRent, decimal totalRentalInducedRate, decimal rentIncreaseRate, decimal? yearlyRentCap, Account cashAccount)
+        public static BandedFlow CreatePropertyRentalStream(string name, DateTime startTime, decimal initialYearlyRent, decimal totalRentalInducedRate, decimal rentIncreaseRate, decimal? yearlyRentCap, Account cashAccount)
         {
             var yearlyNetRent = initialYearlyRent * (1 - totalRentalInducedRate);
             var rentalInflation = FlowHelpers.ConstantInflation(startTime, rentIncreaseRate);
@@ -36,7 +36,7 @@ namespace NewFinance.Concrete.Contracts
             {
                 FlowHelpers.FlowCapping(rentalNetInFlowDescriptor, yearlyRentCap.Value/Constants.DaysPerYear, false);
             }
-            return new SteadyFlow(rentalNetInFlowDescriptor, cashAccount, name);
+            return new BandedFlow(rentalNetInFlowDescriptor, cashAccount, name);
         }
 
         public static Loan CreatePersonalLoan(string name, DateTime startTime, decimal loanAmount, Account cashAccount, decimal? loanTermYears, decimal annualInterestRate)

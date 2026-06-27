@@ -5,13 +5,13 @@ using NewFinance.Core;
 
 namespace NewFinance.Concrete.Contracts
 {
-    public class Employment : SteadyFlow
+    public class Employment : BandedFlow
     {
         public const string ChangeTrackerPaygWithheld = "PaygWithheld";
 
         private static readonly TimeSpan DefaultPaygWithholdingFrequency = TimeSpan.FromDays(14);
 
-        public Employment(SteadyFlowDescriptor descriptor, TaxIndividual individual, Account cashAccount) : base(descriptor, cashAccount, $"Employment of {individual.Name}")
+        public Employment(BandedFlowDescriptor descriptor, TaxIndividual individual, Account cashAccount) : base(descriptor, cashAccount, $"Employment of {individual.Name}")
         {
             FlowBookingInterval = DefaultPaygWithholdingFrequency;
             Individual = individual;

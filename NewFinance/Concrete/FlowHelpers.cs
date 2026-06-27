@@ -4,9 +4,9 @@ namespace NewFinance.Concrete.Contracts
 {
     public static class FlowHelpers
     {
-        public static SteadyFlowDescriptor ConstantFlowDescriptor(DateTime startTime, decimal rate)
+        public static BandedFlowDescriptor ConstantFlowDescriptor(DateTime startTime, decimal rate)
         {
-            return new SteadyFlowDescriptor(startTime, [(rate, DateTime.MaxValue)]);
+            return new BandedFlowDescriptor(startTime, [(rate, DateTime.MaxValue)]);
         }
 
         public static Inflation ConstantInflation(DateTime startTime, decimal annualInflationRate)
@@ -14,13 +14,13 @@ namespace NewFinance.Concrete.Contracts
             return new Inflation(startTime, [(annualInflationRate, DateTime.MaxValue)]);
         }
 
-        public static SteadyFlowDescriptor ApplyInflation(this Inflation inflation, DateTime flowStartTime, decimal initialRate)
+        public static BandedFlowDescriptor ApplyInflation(this Inflation inflation, DateTime flowStartTime, decimal initialRate)
         {
             var reviewDates = inflation.Rates.Select(r => r.Item2).ToList();
             return ApplyInflation(inflation, flowStartTime, initialRate, reviewDates);
         }
 
-        public static SteadyFlowDescriptor ApplyInflation(this Inflation inflation, DateTime flowStartTime, decimal initialDailyRate, IEnumerable<DateTime> reviewDates)
+        public static BandedFlowDescriptor ApplyInflation(this Inflation inflation, DateTime flowStartTime, decimal initialDailyRate, IEnumerable<DateTime> reviewDates)
         {
             List<(decimal Rate, DateTime EndTime)> inflows = [];
 
@@ -60,7 +60,7 @@ namespace NewFinance.Concrete.Contracts
             currentRate *= finalInflationFactor;
             inflows.Add((currentRate, DateTime.MaxValue));
 
-            return new SteadyFlowDescriptor(flowStartTime, inflows);
+            return new BandedFlowDescriptor(flowStartTime, inflows);
         }
 
         public static decimal GetRelativeInflationFactor(this Inflation inflation, DateTime fromTime, DateTime toTime)
@@ -105,7 +105,7 @@ namespace NewFinance.Concrete.Contracts
             return cumulativeInflationFactor;
         }
 
-        public static void FlowCapping(SteadyFlowDescriptor flow, decimal capRate, bool isNegativeFlow)
+        public static void FlowCapping(BandedFlowDescriptor flow, decimal capRate, bool isNegativeFlow)
         {
             for (int i = 0; i < flow.Inflows.Count; i++)
             {

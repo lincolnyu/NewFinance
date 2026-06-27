@@ -4,7 +4,7 @@ using NewFinance.Core;
 
 namespace NewFinance.Concrete.Contracts
 {
-    public class Deductible(SteadyFlowDescriptor descriptor, TaxIndividual individual, Account cashAccount, string name) : SteadyFlow(descriptor, cashAccount, name)
+    public class Deductible(BandedFlowDescriptor descriptor, TaxIndividual individual, Account cashAccount, string name) : BandedFlow(descriptor, cashAccount, name)
     {
         TaxIndividual Individual { get; } = individual;
     }

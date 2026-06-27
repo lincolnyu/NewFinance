@@ -41,7 +41,7 @@ namespace NewFinance.Concrete.Contracts
 
                     var loan = TaxPayer.Liabilities.OfType<Loan>().FirstOrDefault(loan => loan.Contract!.Property == property);
                     
-                    var netRentalIncome = executor.ChangeTrackers?[propertySchedule.YieldInducedStream, Common.SteadyFlow.ChangeTrackerInflow][this].GetTrackedChangeAndReset() * share ?? 0m;
+                    var netRentalIncome = executor.ChangeTrackers?[propertySchedule.YieldInducedStream, Common.BandedFlow.ChangeTrackerInflow][this].GetTrackedChangeAndReset() * share ?? 0m;
 
                     var interestPaid = (-executor.ChangeTrackers?[loan?.Contract!, LoanContract.ChangeTrackerPaidInterest][this].GetTrackedChangeAndReset() ?? 0m) * share;
 
@@ -86,12 +86,12 @@ namespace NewFinance.Concrete.Contracts
             {
                 if (contract is Employment employment)
                 {
-                    totalIncome += executor.ChangeTrackers?[employment, Common.SteadyFlow.ChangeTrackerInflow][this].GetTrackedChangeAndReset() ?? 0m;
+                    totalIncome += executor.ChangeTrackers?[employment, Common.BandedFlow.ChangeTrackerInflow][this].GetTrackedChangeAndReset() ?? 0m;
                     totalPaygWithheld += executor.ChangeTrackers?[employment, Employment.ChangeTrackerPaygWithheld][this].GetTrackedChangeAndReset() ?? 0m;
                 }
                 else if (contract is Deductible expense)
                 {
-                    totalDeduction += -executor.ChangeTrackers?[expense, Common.SteadyFlow.ChangeTrackerInflow][this].GetTrackedChangeAndReset() ?? 0m;
+                    totalDeduction += -executor.ChangeTrackers?[expense, Common.BandedFlow.ChangeTrackerInflow][this].GetTrackedChangeAndReset() ?? 0m;
                 }
             }
 

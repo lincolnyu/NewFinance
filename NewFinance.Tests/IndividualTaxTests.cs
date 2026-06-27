@@ -56,7 +56,7 @@ public class IndividualTaxTests
         var changeTrackers  = new ChangeTrackers();
 
         taxpayer.TaxableContracts.Add(employment);
-        changeTrackers.GetOrCreateTracker(employment, Common.SteadyFlow.ChangeTrackerInflow).TrackChange(100_000m);
+        changeTrackers.GetOrCreateTracker(employment, Common.BandedFlow.ChangeTrackerInflow).TrackChange(100_000m);
         changeTrackers.GetOrCreateTracker(employment, Employment.ChangeTrackerPaygWithheld).TrackChange(25_000m);
         
         executor.Contracts.Add(tax);
