@@ -54,7 +54,7 @@ namespace NewFinance.Concrete.Contracts
             return loan;
         }
 
-        public static Loan CreateLoan(Property property, decimal? deposit, DateTime settlementTime, decimal loanAmount, Account cashAccount, decimal offsetRatio, decimal? loanTermYears, decimal annualInterestRate)
+        public static Loan CreatePropertyLoan(Property property, decimal? deposit, DateTime settlementTime, decimal loanAmount, Account cashAccount, decimal offsetRatio, decimal? loanTermYears, decimal annualInterestRate)
         {
             var loan = new Loan($"Loan for {property.Name}");
 

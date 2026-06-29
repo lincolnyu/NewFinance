@@ -41,7 +41,7 @@ namespace NewFinance.Concrete.Contracts
 
                     var loan = TaxPayer.Liabilities.OfType<Loan>().FirstOrDefault(loan => loan.Contract!.Property == property);
                     
-                    var netRentalIncome = executor.ChangeTrackers?[propertySchedule.YieldInducedStream, Common.BandedFlow.ChangeTrackerInflow][this].GetTrackedChangeAndReset() * share ?? 0m;
+                    var netRentalIncome = executor.ChangeTrackers?[propertySchedule.RentInducedStream, Common.BandedFlow.ChangeTrackerInflow][this].GetTrackedChangeAndReset() * share ?? 0m;
 
                     var interestPaid = (-executor.ChangeTrackers?[loan?.Contract!, LoanContract.ChangeTrackerPaidInterest][this].GetTrackedChangeAndReset() ?? 0m) * share;
 
