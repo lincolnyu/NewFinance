@@ -6,6 +6,13 @@ namespace NewFinance.Concrete.Contracts
 {
     public class FundSchedule : InvestmentSchedule
     {
+
+        public const string ChangeTrackerFundCapitalGain  = "FundCapitalGain";
+        public const string ChangeTrackerFundYield  = "FundYield";
+        public const string ChangeTrackerFundFees  = "FundFees";
+
+        private Dictionary<decimal, decimal> _positions = new Dictionary<decimal, decimal>();   // Price to shares mapping.
+
         // Define properties and methods for FundSchedule here
         public FundSchedule(Fund fund, DateTime startTime, decimal initialValue, Func<decimal, decimal> getGrowthRate, 
             Func<FundSchedule, TimeSpan, decimal> getYield, Func<decimal, (Account, decimal)>? cash) : base(fund, startTime, initialValue, getGrowthRate)
@@ -21,6 +28,7 @@ namespace NewFinance.Concrete.Contracts
 
                     var yield = getYield(schedule, currentTime - lastTime);
                     decimal reinvestment = yield;
+
                     if (cash is not null)
                     {
                         (var cashAccount, var cashAmount) = cash(yield); 
@@ -29,11 +37,21 @@ namespace NewFinance.Concrete.Contracts
 
                         if (reinvestment < 0)
                         {
+                            // sell
+                            Trade(executor, reinvestment, out var profit);
                             // TODO capital gain
-                            // tax selling + yield
+                            // tax for profit
                         }
-                        else if(cashAmount > 0)
+                        else if (reinvestment > 0)
                         {
+                            // buy
+                            Trade(executor, reinvestment, out var _);
+                        }
+
+                        if(cashAmount > 0)
+                        {
+                            executor.ExecuteTransaction(cashAccount, cashAmount, YieldContract!, $"Yield for {schedule.Investment.Name}");
+                            executor.ChangeTrackers?.GetOrCreateTracker(this, ChangeTrackerFundYield).TrackChange(cashAmount);
                             // tax for yield
                         }
                     }
@@ -43,7 +61,7 @@ namespace NewFinance.Concrete.Contracts
                         executor.ExecuteTransaction(schedule.Investment, reinvestment, schedule.YieldContract!, $"Reinvestment for {schedule.Investment.Name}");
                     }
 
-                    return (currentTime, lastBookedTime);
+                    return (currentTime, null); // Returning null as booked time letting the primary contract to drive.
                 }
             );
 
@@ -53,28 +71,112 @@ namespace NewFinance.Concrete.Contracts
                 this,
                 (context, executor, lastProcessedTime, lastBookedTime, currentTime) =>
                 {
-                    var schedule = (PropertySchedule)context;
-                    var lastTime = lastProcessedTime ?? schedule.StartTime!.Value;
-
-                    var annualFee = schedule.Investment.Balance * AnnualFeeRateToValue;
-                    if (annualFee > AnnualFeeCap)
+                    var newBookedTime = ContractHelpers.RunPeriodic(FeePeriod, lastProcessedTime ?? startTime, currentTime, () =>
                     {
-                        annualFee = AnnualFeeCap.Value;
-                    }
-                    var fees = annualFee * (currentTime - lastTime).Days / Constants.DaysPerYear;
+                        var schedule = (FundSchedule)context;
+                        var lastTime = lastProcessedTime ?? schedule.StartTime!.Value;
 
-                    return (currentTime, lastBookedTime);
+                        var fee = schedule.Investment.Balance * FeeRateToValue;
+                        if (fee > FeeCap)
+                        {
+                            fee = FeeCap.Value;
+                        }
+                        var fees = fee * (currentTime - lastTime).Days / Constants.DaysPerYear;
+
+                        executor.ChangeTrackers?.GetOrCreateTracker(schedule, ChangeTrackerFundFees).TrackChange(-fees);
+
+                        executor.ExecuteTransaction(schedule.FeePaymentAccount?? schedule.Investment, -fees, schedule.FeeContract!, $"Fees for {schedule.Investment.Name}");
+                    });
+
+                    return (currentTime, newBookedTime); // Returning null as booked time letting the primary contract to drive.
                 }
             );
+        }
+
+        public void Trade(ContractExecutor executor, decimal netFund, out decimal? profit)
+        {
+            profit = null;
+            var currentPrice = this.Value.CurrentPricePerShare;
+            decimal shares = netFund / currentPrice;
+            if (netFund > 0)    // buy
+            {
+                _positions[currentPrice] = _positions.GetValueOrDefault(currentPrice, 0m) + shares;
+                executor.ExecuteTransaction(Investment, netFund, this, $"Buy shares for {Investment.Name}");
+            }
+            else    // sell
+            {
+                decimal sharesToSell = -shares;
+                if (-netFund > Investment.Balance)
+                {
+                    return;
+                }
+
+                if (-netFund == Investment.Balance)
+                {
+                    _positions.Clear();
+                    foreach (var position in _positions)
+                    {
+                        profit = (currentPrice - position.Key) * position.Value + (profit ?? 0);        
+                    }
+                    executor.ExecuteTransaction(Investment, -Investment.Balance, this, $"Sell all shares for {Investment.Name}");
+                    if (profit != 0)
+                    {
+                        executor.ChangeTrackers?.GetOrCreateTracker(this, ChangeTrackerFundCapitalGain).TrackChange(profit ?? 0);
+                    }
+                    return;
+                }
+
+                var sortedPositions = _positions.OrderByDescending(p => p.Key).ToList(); // Sort by price descending
+                foreach (var position in sortedPositions)
+                {
+                    if (sharesToSell <= 0)
+                        break;
+
+                    decimal purchasePrice = position.Key;
+                    decimal availableShares = position.Value;
+
+                    if (availableShares <= sharesToSell)
+                    {
+                        // Sell all available shares at this price
+
+                        profit = (currentPrice - purchasePrice) * availableShares + (profit ?? 0);
+
+                        _positions.Remove(purchasePrice);
+                        sharesToSell -= availableShares;
+                    }
+                    else
+                    {
+                        profit = (currentPrice - purchasePrice) * sharesToSell + (profit ?? 0);
+
+                        // Sell only the required number of shares at this price
+                        _positions[purchasePrice] -= sharesToSell;
+                        sharesToSell = 0;
+                    }
+                }
+
+                executor.ExecuteTransaction(Investment, netFund, this, $"Sell shares for {Investment.Name}");
+
+                if (profit != 0)
+                {
+                    executor.ChangeTrackers?.GetOrCreateTracker(this, ChangeTrackerFundCapitalGain).TrackChange(profit ?? 0);
+                }
+
+                if (sharesToSell > 0)
+                {
+                    throw new InvalidOperationException("Not enough shares to sell.");
+                }
+            }
         }
 
         public ContextualContract YieldContract { get; }
 
         public ContextualContract FeeContract { get; }
 
-        public decimal AnnualFeeRateToValue { get; set; }
+        public TimeSpan FeePeriod { get; set; }
+        public decimal FeeRateToValue { get; set; }
+        public decimal? FeeCap { get; set; }
 
-        public decimal? AnnualFeeCap { get; set; }
+        public Account? FeePaymentAccount { get; set; }
 
         protected override IEnumerable<Contract> SubContracts
         {
@@ -87,7 +189,12 @@ namespace NewFinance.Concrete.Contracts
 
         public override DateTime? Execute(ContractExecutor executor, DateTime currentTime)
         {
-            return base.Execute(executor, currentTime);
+            var result = base.Execute(executor, currentTime);
+            if(currentTime == StartTime)
+            {
+                _positions[1m] = Investment.Balance;
+            }
+            return result;
         }
     }
 }

@@ -7,6 +7,10 @@ namespace NewFinance.Concrete.Contracts
     public class PropertySchedule
         : InvestmentSchedule
     {
+
+        public const string ChangeTrackerPropertyFees  = "PropertyFees";
+
+
         public PropertySchedule(Property property, DateTime purchaseTime, decimal purchasePrice, DateTime startTime, decimal initialValue, Func<decimal, decimal> getGrowthRate,  Account costPaymentAccount)  
             : base(property, startTime, initialValue, getGrowthRate)
         {
@@ -38,7 +42,7 @@ namespace NewFinance.Concrete.Contracts
                         schedule.Sale?.Action(executor, schedule);
                     }
 
-                    return (currentTime, lastBookedTime);
+                    return (currentTime, null); // Returning null as booked time letting the primary contract to drive.
                 }
             );
         }

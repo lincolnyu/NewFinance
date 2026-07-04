@@ -20,8 +20,6 @@ namespace NewFinance.Concrete.Contracts
     public abstract class InvestmentSchedule(Investment investment, DateTime startTime, decimal initialValue, Func<decimal, decimal> getGrowthRate) 
         : Contract(startTime, $"Schedule for {investment.Name}")
     {
-        public const string ChangeTrackerPropertyFees  = "RentalInducedNetIncomeChangeTracker";
-
         public Investment Investment { get; } = investment;
 
         /// <summary>
