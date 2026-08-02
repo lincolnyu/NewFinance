@@ -10,7 +10,7 @@ namespace NewFinance.Common
             }
             else
             {
-                return index-1 <  Inflows.Count ? Inflows[index - 1].EndTime : (DateTime?)null;
+                return index-1 <  Inflows.Count ? Inflows[index - 1].EndTime : null;
             }
         }
 
@@ -62,22 +62,22 @@ namespace NewFinance.Common
                     currentStartTime = thisBucketTime;
                     thisBucketIndex++;
                     thatBucketIndex++;
-                    thisRate = thisBucketIndex-1 < Inflows.Count ? Inflows[thisBucketIndex - 1].DailyRate : (decimal?)null;
-                    thatRate = thatBucketIndex-1 < other.Inflows.Count ? other.Inflows[thatBucketIndex - 1].DailyRate : (decimal?)null;
+                    thisRate = thisBucketIndex-1 < Inflows.Count ? Inflows[thisBucketIndex - 1].DailyRate : null;
+                    thatRate = thatBucketIndex-1 < other.Inflows.Count ? other.Inflows[thatBucketIndex - 1].DailyRate : null;
                 }
                 else if (thisBucketTime < thatBucketTime)
                 {
                     yield return (thisRate, thatRate, currentStartTime.Value, thisBucketTime.Value);
                     currentStartTime = thisBucketTime;
                     thisBucketIndex++;
-                    thisRate = thisBucketIndex-1 < Inflows.Count ? Inflows[thisBucketIndex - 1].DailyRate : (decimal?)null    ;
+                    thisRate = thisBucketIndex-1 < Inflows.Count ? Inflows[thisBucketIndex - 1].DailyRate : null;
                 }
                 else
                 {
                     yield return (thisRate, thatRate, currentStartTime.Value, thatBucketTime!.Value);
                     currentStartTime = thatBucketTime;
                     thatBucketIndex++;
-                    thatRate = thatBucketIndex-1 < other.Inflows.Count ? other.Inflows[thatBucketIndex - 1].DailyRate : (decimal?)null;
+                    thatRate = thatBucketIndex-1 < other.Inflows.Count ? other.Inflows[thatBucketIndex - 1].DailyRate : null;
                 }
             }
         }
