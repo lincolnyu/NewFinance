@@ -32,7 +32,6 @@ namespace NewFinance.Concrete.Contracts
                     if (cash is not null)
                     {
                         (var cashAccount, var cashAmount) = cash(yield); 
-                        executor.ExecuteTransaction(cashAccount, cashAmount, schedule.YieldContract!, $"Yield for {schedule.Investment.Name}");
                         reinvestment -= cashAmount;
 
                         if (reinvestment < 0)
@@ -116,7 +115,7 @@ namespace NewFinance.Concrete.Contracts
                     _positions.Clear();
                     foreach (var position in _positions)
                     {
-                        profit = (currentPrice - position.Key) * position.Value + (profit ?? 0);        
+                        profit = (currentPrice - position.Key) * position.Value + (profit ?? 0);
                     }
                     executor.ExecuteTransaction(Investment, -Investment.Balance, this, $"Sell all shares for {Investment.Name}");
                     if (profit != 0)

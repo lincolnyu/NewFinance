@@ -14,7 +14,7 @@ namespace NewFinance.Core
             account.Ownership.Add(entity, ownershipFraction);
         }
 
-        public static DateTime NextAnniversayCrossing(this DateTime start, int month, int day)
+        public static DateTime NextAnniversaryCrossing(this DateTime start, int month, int day)
         {
             DateTime candidate = new DateTime(start.Year, month, day);
             if (candidate <= start)

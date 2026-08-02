@@ -16,11 +16,11 @@ namespace NewFinance.Common
 
         public BandedFlowDescriptor Add(BandedFlowDescriptor other)
         {
-            var combinedInflows = Combine(other).Select(x => (DailyRate: (x.Rate1 ?? 0) + (x.Rate2 ?? 0), x.EndTIme)).ToList();
+            var combinedInflows = Combine(other).Select(x => (DailyRate: (x.Rate1 ?? 0) + (x.Rate2 ?? 0), x.EndTime)).ToList();
             return new BandedFlowDescriptor(StartTime < other.StartTime ? StartTime : other.StartTime, combinedInflows);  
         }
 
-        public IEnumerable<(decimal? Rate1, decimal? Rate2, DateTime StartTime, DateTime EndTIme)> Combine(BandedFlowDescriptor other)
+        public IEnumerable<(decimal? Rate1, decimal? Rate2, DateTime StartTime, DateTime EndTime)> Combine(BandedFlowDescriptor other)
         {
             int thisBucketIndex = 0;
             int thatBucketIndex = 0;

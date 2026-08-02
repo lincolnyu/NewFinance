@@ -74,11 +74,11 @@ namespace NewFinance.Concrete.Contracts
         {
             var salePrice = property.Balance;
             var saleProceeds = salePrice - saleCost;
-            var captialGain = saleProceeds - property.Schedule!.PurchasePrice - property.PurchaseAdditionalCost;
-            return captialGain;
+            var capitalGain = saleProceeds - property.Schedule!.PurchasePrice - property.PurchaseAdditionalCost;
+            return capitalGain;
         }
 
-        public static void SellPropety(Property property, decimal saleCost, Loan? loan, DateTime saleTime, Account cashAccount, Action<decimal>? onSold)
+        public static void SellProperty(Property property, decimal saleCost, Loan? loan, DateTime saleTime, Account cashAccount, Action<decimal>? onSold)
         {
             property.Schedule!.Sale =(saleTime, (executor, schedule) =>
             {
