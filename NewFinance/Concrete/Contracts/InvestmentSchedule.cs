@@ -17,8 +17,7 @@ namespace NewFinance.Concrete.Contracts
     /// <param name="initialValue">The initial value of the investment (at the `startTime`).</param>
     /// <param name="getGrowthRate">A function to get the growth rate of the investment.`</param>
     /// <param name="costPaymentAccount">Account to pay for the fees.</param>
-    public abstract class InvestmentSchedule(Investment investment, DateTime startTime, decimal initialValue, Func<decimal, decimal> getGrowthRate) 
-        : Contract(startTime, $"Schedule for {investment.Name}")
+    public abstract class InvestmentSchedule(Investment investment, DateTime startTime, decimal initialValue, Func<decimal, decimal> getGrowthRate) : CombinedContract(startTime, $"Schedule for {investment.Name}")
     {
         public Investment Investment { get; } = investment;
 
@@ -29,10 +28,6 @@ namespace NewFinance.Concrete.Contracts
 
         protected abstract IEnumerable<Contract> SubContracts { get; }
 
-        protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
-        {
-            var bookedTime = executor.ExecuteContracts(SubContracts.Prepend(Value), currentTime);
-            return (currentTime, bookedTime);
-        }
+        public override IEnumerable<Contract> ChildContracts => SubContracts.Prepend(Value);
     }
 }
