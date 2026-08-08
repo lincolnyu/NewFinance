@@ -23,7 +23,7 @@ namespace NewFinance.Concrete.Contracts
                 InitialAnnualBaseFeeRate = initialBaseAnnualFeeRate,
                 InitialAnnualRentalFeeRate = initialRentalFeeRate,
                 FeeInflation = FlowHelpers.ConstantInflation(purchaseTime, levyAndRatesInflationRate)
-            };
+            }.CreateAllNaturalTrackerKeys();
             property.Schedule = schedule;
             return property;
         }
@@ -38,9 +38,7 @@ namespace NewFinance.Concrete.Contracts
                 FlowHelpers.FlowCapping(rentalNetInFlowDescriptor, yearlyRentCap.Value/Constants.DaysPerYear, false);
             }
 
-            var bandedFlow = new BandedFlow(rentalNetInFlowDescriptor, cashAccount, name);
-            bandedFlow.CreateAllNaturalTrackerKeys();
-            return bandedFlow;
+            return new BandedFlow(rentalNetInFlowDescriptor, cashAccount, name).CreateAllNaturalTrackerKeys();
         }
 
         public static Loan CreatePersonalLoan(string name, DateTime startTime, decimal loanAmount, Account cashAccount, decimal? loanTermYears, decimal annualInterestRate)
@@ -52,7 +50,7 @@ namespace NewFinance.Concrete.Contracts
                 CashAccount = cashAccount,
                 LoanTermYears = loanTermYears,
                 AnnualInterestRate = annualInterestRate
-            };
+            }.CreateAllNaturalTrackerKeys();
             loan.Contract = loanContract;
 
             return loan;
@@ -68,7 +66,7 @@ namespace NewFinance.Concrete.Contracts
                 OffsetRatio = offsetRatio,
                 LoanTermYears = loanTermYears,
                 AnnualInterestRate = annualInterestRate
-            };
+            }.CreateAllNaturalTrackerKeys();
             loan.Contract = loanContract;
 
             return loan;

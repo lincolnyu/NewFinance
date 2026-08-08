@@ -1,6 +1,6 @@
 namespace NewFinance.Core
 {
-    public interface ITrackerKey
+    public interface ITrackerKey : IEquatable<ITrackerKey>
     {
     }
 }

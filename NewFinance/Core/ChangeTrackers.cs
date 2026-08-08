@@ -44,7 +44,7 @@ namespace NewFinance.Core
             return _trackers.Select(kvp => (kvp.Key, kvp.Value));
         }
 
-        public class Tracker// : IHasName
+        public class Tracker : IHasName
         {
             public class Subscription(decimal initialChange)
             {
@@ -66,6 +66,8 @@ namespace NewFinance.Core
             public required ITrackerKey Key {get;set;}
 
             public decimal TotalChange { get; private set; } = 0;
+
+            public string Name => (Key as SourcedTrackerKey)?.Name ?? "";
 
             public IEnumerable<(object subscriber, Subscription subscription)> GetSubscriptions()
             {

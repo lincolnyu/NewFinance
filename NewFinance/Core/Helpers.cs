@@ -7,32 +7,34 @@ namespace NewFinance.Core
     {
         public const string ExpectedTrackerKeySuffix = "TrackerKey";
 
-        public static TrackerKeyWithSource CreateTrackerKeyWithSource(this object source, string name) => new TrackerKeyWithSource(source, name);
+        public static SourcedTrackerKey CreateTrackerKeyWithSource(this object source, string name) => new SourcedTrackerKey(source, name);
 
-        public static void CreateNaturalTrackerKey(this object source, string trackerKeyPropertyName)
+        public static T CreateNaturalTrackerKey<T>(this T source, string trackerKeyPropertyName) where T : Contract
         {
-            var trackerKeyProperty = source.GetType().GetProperty(trackerKeyPropertyName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            var trackerKeyProperty = typeof(T).GetProperty(trackerKeyPropertyName, BindingFlags.Public | BindingFlags.Instance);
             CreateNaturalTrackerKey(source, trackerKeyProperty!);
+            return source;
         }
 
-        private static void CreateNaturalTrackerKey(this object source, PropertyInfo trackerKeyProperty)
+        private static void CreateNaturalTrackerKey<T>(this T source, PropertyInfo trackerKeyProperty) where T : Contract
         {
             var trackerKeyPropertyName = trackerKeyProperty.Name;
             Debug.Assert(trackerKeyPropertyName.EndsWith(ExpectedTrackerKeySuffix));
             var trackerKeyName = trackerKeyPropertyName[..^ExpectedTrackerKeySuffix.Length].TrimEnd('_');
-            var trackerKey = CreateTrackerKeyWithSource(source, trackerKeyName);
+            var trackerKey = CreateTrackerKeyWithSource(source!, trackerKeyName);
             trackerKeyProperty!.SetValue(source, trackerKey);
         }
 
-        public static void CreateAllNaturalTrackerKeys(this object source)
+        public static T CreateAllNaturalTrackerKeys<T>(this T source) where T : Contract
         {
-            foreach (var property in source.GetType().GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+            foreach (var property in typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
                 if (property.PropertyType.IsAssignableTo(typeof(ITrackerKey)) && property.Name.EndsWith(ExpectedTrackerKeySuffix))
                 {
                     CreateNaturalTrackerKey(source, property);
                 }
             }
+            return source;
         }
 
         public static void AddAsset(this Entity entity, Account account, decimal ownershipFraction)

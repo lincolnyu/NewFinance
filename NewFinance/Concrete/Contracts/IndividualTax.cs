@@ -41,11 +41,11 @@ namespace NewFinance.Concrete.Contracts
 
                     var loan = TaxPayer.Liabilities.OfType<Loan>().FirstOrDefault(loan => loan.Contract!.Property == property);
                     
-                    var netRentalIncome = executor.GetOrCreateTrackerSubscription(propertySchedule.RentInducedStream?.InflowTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m * share;
+                    var netRentalIncome = (executor.GetOrCreateTrackerSubscription(propertySchedule.RentInducedStream?.InflowTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m) * share;
 
-                    var interestPaid = -executor.GetOrCreateTrackerSubscription(loan?.Contract?.PaidInterestTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m * share;
+                    var interestPaid = (-executor.GetOrCreateTrackerSubscription(loan?.Contract?.PaidInterestTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m) * share;
 
-                    var fees = executor.GetOrCreateTrackerSubscription(propertySchedule.PropertyFeesTrackerKey, this)?.GetTrackedChangeAndReset()  ?? 0m * share;
+                    var fees = (executor.GetOrCreateTrackerSubscription(propertySchedule.PropertyFeesTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m) * share;
 
                     var netRentalTaxable = netRentalIncome - interestPaid - fees;
 
@@ -105,7 +105,7 @@ namespace NewFinance.Concrete.Contracts
             executor.ExecuteTransaction(cashPaymentAccount, -taxAssessmentBalance, this, $"Tax assessment for {Name}");
             if (TaxPaidTrackerKey is not null)
             {
-                executor.ChangeTrackers?[ TaxPaidTrackerKey].TrackChange(-totalTaxPayable);
+                executor.ChangeTrackers?[TaxPaidTrackerKey].TrackChange(-totalTaxPayable);
             }
         }
 
