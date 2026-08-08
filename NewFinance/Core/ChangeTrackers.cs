@@ -72,9 +72,9 @@ namespace NewFinance.Core
                 return _subscriptions.Select(kvp => (kvp.Key, kvp.Value));
             }
 
-            public Subscription this[object subscriber] => GetOrCreateTracker(subscriber, true);
+            public Subscription this[object subscriber] => GetOrCreateSubscription(subscriber, true);
 
-            public Subscription GetOrCreateTracker(object subscriber, bool trackExistingChange)
+            public Subscription GetOrCreateSubscription(object subscriber, bool trackExistingChange)
             {
                 if (!_subscriptions.TryGetValue(subscriber, out var tracker))
                 {
@@ -84,7 +84,7 @@ namespace NewFinance.Core
                 return tracker;
             }
 
-            public void CreateTracker(object subscriber, bool trackExistingChange)
+            public void Subscribe(object subscriber, bool trackExistingChange)
             {
                 if (!_subscriptions.ContainsKey(subscriber))
                 {
@@ -92,12 +92,12 @@ namespace NewFinance.Core
                 }
             }
 
-            public void RemoveTracker(object subscriber)
+            public void Unsubscribe(object subscriber)
             {
                 _subscriptions.Remove(subscriber);
             }
 
-            public void ClearTrackers()
+            public void UnsubscribeAll()
             {
                 _subscriptions.Clear();
             }

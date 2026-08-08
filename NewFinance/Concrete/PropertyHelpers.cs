@@ -8,6 +8,8 @@ namespace NewFinance.Concrete.Contracts
     {
         public const string SalesProceedsForTaxTrackerName = "SalesProceedsForTax";
 
+        public static ITrackerKey SalesProceedsForTaxTrackerKey(Property property) => Helpers.CreateTrackerKeyWithSource(property, SalesProceedsForTaxTrackerName);
+
         public static Property CreatePropertyWithSchedule(string name, DateTime purchaseTime, decimal purchasePrice, decimal purchaseAdditionalCost, DateTime initialTime, decimal initialValue, decimal growthRate, 
             decimal priceValueCap,  decimal initialBaseAnnualFeeRate, decimal initialRentalFeeRate, decimal levyAndRatesInflationRate, Account cashAccount)
         {
@@ -37,7 +39,7 @@ namespace NewFinance.Concrete.Contracts
             }
 
             var bandedFlow = new BandedFlow(rentalNetInFlowDescriptor, cashAccount, name);
-            bandedFlow.InflowTrackerKey = Helpers.CreateTrackerKeyWithSource(bandedFlow, "Inflow");
+            bandedFlow.CreateAllNaturalTrackerKeys();
             return bandedFlow;
         }
 
@@ -97,7 +99,7 @@ namespace NewFinance.Concrete.Contracts
                     salesCashIn += loanRepayment;
                 }
 
-                var trackerKey = Helpers.CreateTrackerKeyWithSource(property, SalesProceedsForTaxTrackerName);
+                var trackerKey = SalesProceedsForTaxTrackerKey(property);
                 executor.ChangeTrackers?.GetOrCreateTracker(trackerKey).TrackChange(salesProceeds);
 
                 executor.ExecuteTransaction(cashAccount, salesCashIn, schedule, $"Proceeds from sale of {property.Name}");

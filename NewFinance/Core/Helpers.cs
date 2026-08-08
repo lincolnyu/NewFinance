@@ -1,8 +1,39 @@
+using System.Diagnostics;
+using System.Reflection;
+
 namespace NewFinance.Core
 {
     public static class Helpers
     {
-        public static TrackerKeyWithSource CreateTrackerKeyWithSource(object source, string name) => new TrackerKeyWithSource(source, name);
+        public const string ExpectedTrackerKeySuffix = "TrackerKey";
+
+        public static TrackerKeyWithSource CreateTrackerKeyWithSource(this object source, string name) => new TrackerKeyWithSource(source, name);
+
+        public static void CreateNaturalTrackerKey(this object source, string trackerKeyPropertyName)
+        {
+            var trackerKeyProperty = source.GetType().GetProperty(trackerKeyPropertyName, BindingFlags.Public | BindingFlags.NonPublic);
+            CreateNaturalTrackerKey(source, trackerKeyProperty!);
+        }
+
+        private static void CreateNaturalTrackerKey(this object source, PropertyInfo trackerKeyProperty)
+        {
+            var trackerKeyPropertyName = trackerKeyProperty.Name;
+            Debug.Assert(trackerKeyPropertyName.EndsWith(ExpectedTrackerKeySuffix));
+            var trackerKeyName = trackerKeyPropertyName[..-ExpectedTrackerKeySuffix.Length].TrimEnd('_');
+            var trackerKey = CreateTrackerKeyWithSource(source, trackerKeyName);
+            trackerKeyProperty!.SetValue(source, trackerKey);
+        }
+
+        public static void CreateAllNaturalTrackerKeys(this object source)
+        {
+            foreach (var property in source.GetType().GetProperties(BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                if (property.PropertyType.IsAssignableTo(typeof(ITrackerKey)) && property.Name.EndsWith(ExpectedTrackerKeySuffix))
+                {
+                    CreateNaturalTrackerKey(source, property);
+                }
+            }
+        }
 
         public static void AddAsset(this Entity entity, Account account, decimal ownershipFraction)
         {
@@ -53,6 +84,11 @@ namespace NewFinance.Core
             transaction.ExecuteAndRecord(executor);
         }
 
+        public static ChangeTrackers.Tracker.Subscription? GetOrCreateTrackerSubscription(this ContractExecutor executor, ITrackerKey? trackerKey, object subscriber)
+        {
+            return trackerKey is not null ? executor.ChangeTrackers?[trackerKey][subscriber] : null;
+        }
+
         public static decimal GetTrackedChangeAndReset(this ChangeTrackers.Tracker.Subscription subscription)
         {
             var change = subscription.TrackedChange;
@@ -64,7 +100,6 @@ namespace NewFinance.Core
         {
             return time.Month == 6 && time.Day == 30;
         }
-
 
         public static DateTime CurrentBOFY(this DateTime time)
         {

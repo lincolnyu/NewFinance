@@ -7,11 +7,11 @@ namespace NewFinance.Concrete.Contracts
 {
     public class Employment : BandedFlow
     {
-        public ITrackerKey? PaygWithheldTrackerKey { get; init }
+        public ITrackerKey? PaygWithheldTrackerKey { get; set; }
 
         private static readonly TimeSpan DefaultPaygWithholdingFrequency = TimeSpan.FromDays(14);
 
-        public Employment(BandedFlowDescriptor descriptor, TaxIndividual individual, Account cashAccount) : base(descriptor, cashAccount, $"Employment of {individual.Name}", ChangeTrackerInflow)
+        public Employment(BandedFlowDescriptor descriptor, TaxIndividual individual, Account cashAccount) : base(descriptor, cashAccount, $"Employment of {individual.Name}")
         {
             FlowBookingInterval = DefaultPaygWithholdingFrequency;
             Individual = individual;

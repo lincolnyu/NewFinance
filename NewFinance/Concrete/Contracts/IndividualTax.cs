@@ -7,7 +7,7 @@ namespace NewFinance.Concrete.Contracts
 {
     public class IndividualTax(TaxIndividual taxPayer, Account cashPaymentAccount) : Contract(null, $"Individual Tax for {taxPayer.Name}")
     {
-        public const string ChangeTrackerTaxPaid = "TaxPaid";
+        public ITrackerKey? TaxPaidTrackerKey { get; set; }
 
         public TaxIndividual TaxPayer { get; } = taxPayer;
 
@@ -41,11 +41,11 @@ namespace NewFinance.Concrete.Contracts
 
                     var loan = TaxPayer.Liabilities.OfType<Loan>().FirstOrDefault(loan => loan.Contract!.Property == property);
                     
-                    var netRentalIncome = executor.ChangeTrackers?[propertySchedule.RentInducedStream.InflowTrackerKey][this].GetTrackedChangeAndReset() * share ?? 0m;
+                    var netRentalIncome = executor.GetOrCreateTrackerSubscription(propertySchedule.RentInducedStream?.InflowTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m * share;
 
-                    var interestPaid = ( loan?.Contract!.PaidInterestTrackerKey is not null ? -executor.ChangeTrackers?[loan?.Contract!.PaidInterestTrackerKey][this].GetTrackedChangeAndReset() ?? 0m : 0m) * share;
+                    var interestPaid = -executor.GetOrCreateTrackerSubscription(loan?.Contract?.PaidInterestTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m * share;
 
-                    var fees = (-executor.ChangeTrackers?[propertySchedule.PropertyFeesTrackerKey][this].GetTrackedChangeAndReset()?? 0m) * share;
+                    var fees = executor.GetOrCreateTrackerSubscription(propertySchedule.PropertyFeesTrackerKey, this)?.GetTrackedChangeAndReset()  ?? 0m * share;
 
                     var netRentalTaxable = netRentalIncome - interestPaid - fees;
 
@@ -60,7 +60,8 @@ namespace NewFinance.Concrete.Contracts
 
                         decimal? netCapitalGain = null;
 
-                        if (executor.ChangeTrackers?.TryGetTracker(property , PropertyHelpers.SalesProceedsForTaxTrackerName, out var salesProceedsTracker) == true) // just sold
+                        var salesProceedsTrackerKey =  PropertyHelpers.SalesProceedsForTaxTrackerKey(property);
+                        if (executor.ChangeTrackers?.TryGetTracker(salesProceedsTrackerKey, out var salesProceedsTracker) == true) // just sold
                         {
                             // Do not reset here as it may be used by another tax individual if co-owned.
                             decimal salesProceeds = salesProceedsTracker![this].TrackedChange;
@@ -86,12 +87,12 @@ namespace NewFinance.Concrete.Contracts
             {
                 if (contract is Employment employment)
                 {
-                    totalIncome += executor.ChangeTrackers?[employment, Common.BandedFlow.ChangeTrackerInflow][this].GetTrackedChangeAndReset() ?? 0m;
-                    totalPaygWithheld += executor.ChangeTrackers?[employment, Employment.ChangeTrackerPaygWithheld][this].GetTrackedChangeAndReset() ?? 0m;
+                    totalIncome += executor.GetOrCreateTrackerSubscription(employment.InflowTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m;
+                    totalPaygWithheld += executor.GetOrCreateTrackerSubscription(employment.PaygWithheldTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m;
                 }
                 else if (contract is Deductible expense)
                 {
-                    totalDeduction += -executor.ChangeTrackers?[expense, Common.BandedFlow.ChangeTrackerInflow][this].GetTrackedChangeAndReset() ?? 0m;
+                    totalDeduction += -executor.GetOrCreateTrackerSubscription(expense.InflowTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m;
                 }
             }
 
@@ -102,7 +103,10 @@ namespace NewFinance.Concrete.Contracts
             decimal totalTaxPayable = residentialIncome +  medicareLevy;
             decimal taxAssessmentBalance = totalTaxPayable - totalPaygWithheld;
             executor.ExecuteTransaction(cashPaymentAccount, -taxAssessmentBalance, this, $"Tax assessment for {Name}");
-            executor.ChangeTrackers?[this, ChangeTrackerTaxPaid].TrackChange(-totalTaxPayable);
+            if (TaxPaidTrackerKey is not null)
+            {
+                executor.ChangeTrackers?[ TaxPaidTrackerKey].TrackChange(-totalTaxPayable);
+            }
         }
 
         private bool IsNegativeGearingAllowed(Property property, DateTime currentTime)

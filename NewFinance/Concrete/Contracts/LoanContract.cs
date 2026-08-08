@@ -6,9 +6,9 @@ namespace NewFinance.Concrete.Contracts
 {
     public class LoanContract : AccountBindingContract
     {
-        public ITrackerKey PaidInterestTrackerKey { get; set; }
+        public ITrackerKey? PaidInterestTrackerKey { get; set; }
 
-        public ITrackerKey PaidPrincipalTrackerKey { get; set; }
+        public ITrackerKey? PaidPrincipalTrackerKey { get; set; }
 
         public Property? Property { get; private set; }
 
