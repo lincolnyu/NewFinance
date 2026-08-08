@@ -11,7 +11,7 @@ namespace NewFinance.Core
 
         public static void CreateNaturalTrackerKey(this object source, string trackerKeyPropertyName)
         {
-            var trackerKeyProperty = source.GetType().GetProperty(trackerKeyPropertyName, BindingFlags.Public | BindingFlags.NonPublic);
+            var trackerKeyProperty = source.GetType().GetProperty(trackerKeyPropertyName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             CreateNaturalTrackerKey(source, trackerKeyProperty!);
         }
 
@@ -19,14 +19,14 @@ namespace NewFinance.Core
         {
             var trackerKeyPropertyName = trackerKeyProperty.Name;
             Debug.Assert(trackerKeyPropertyName.EndsWith(ExpectedTrackerKeySuffix));
-            var trackerKeyName = trackerKeyPropertyName[..-ExpectedTrackerKeySuffix.Length].TrimEnd('_');
+            var trackerKeyName = trackerKeyPropertyName[..^ExpectedTrackerKeySuffix.Length].TrimEnd('_');
             var trackerKey = CreateTrackerKeyWithSource(source, trackerKeyName);
             trackerKeyProperty!.SetValue(source, trackerKey);
         }
 
         public static void CreateAllNaturalTrackerKeys(this object source)
         {
-            foreach (var property in source.GetType().GetProperties(BindingFlags.Public | BindingFlags.NonPublic))
+            foreach (var property in source.GetType().GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
             {
                 if (property.PropertyType.IsAssignableTo(typeof(ITrackerKey)) && property.Name.EndsWith(ExpectedTrackerKeySuffix))
                 {
