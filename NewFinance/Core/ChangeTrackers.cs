@@ -2,36 +2,36 @@ namespace NewFinance.Core
 {
     public class ChangeTrackers
     {
-        private readonly Dictionary<(object?, string), Tracker> _trackers = new Dictionary<(object?, string), Tracker>();
+        private readonly Dictionary<ITrackerKey, Tracker> _trackers = [];
 
-        public Tracker this[object? obj, string name] => GetOrCreateTracker(obj, name);
+        public Tracker this[ITrackerKey key] => GetOrCreateTracker(key);
 
-        public bool TryGetTracker(object? obj, string name, out Tracker? tracker)
+        public bool TryGetTracker(ITrackerKey key, out Tracker? tracker)
         {
-            return _trackers.TryGetValue((obj, name), out tracker);
+            return _trackers.TryGetValue(key, out tracker);
         }
 
-        public Tracker GetOrCreateTracker(object? obj, string name)
+        public Tracker GetOrCreateTracker(ITrackerKey key)
         {
-            if (!_trackers.TryGetValue((obj, name), out var tracker))
+            if (!_trackers.TryGetValue(key, out var tracker))
             {
-                tracker = new Tracker() { Name = name };
-                _trackers[(obj, name)] = tracker;
+                tracker = new Tracker() { Key = key };
+                _trackers[key] = tracker;
             }
             return tracker;
         }
 
-        public void CreateTracker(object? obj, string name)
+        public void CreateTracker(ITrackerKey key)
         {
-            if (!_trackers.ContainsKey((obj, name)))
+            if (!_trackers.ContainsKey(key))
             {
-                _trackers[(obj, name)] = new Tracker() { Name = name };
+                _trackers[key] = new Tracker() { Key = key };
             }
         }
 
-        public void RemoveTracker(object? obj, string name)
+        public void RemoveTracker(ITrackerKey key)
         {
-            _trackers.Remove((obj, name));
+            _trackers.Remove(key);
         }
 
         public void ClearTrackers()
@@ -39,12 +39,12 @@ namespace NewFinance.Core
             _trackers.Clear();
         }
 
-        public IEnumerable<(object? obj, string name, Tracker tracker)> GetTrackers()
+        public IEnumerable<(ITrackerKey key, Tracker tracker)> GetTrackers()
         {
-            return _trackers.Select(kvp => (kvp.Key.Item1, kvp.Key.Item2, kvp.Value));
+            return _trackers.Select(kvp => (kvp.Key, kvp.Value));
         }
 
-        public class Tracker : IHasName
+        public class Tracker// : IHasName
         {
             public class Subscription(decimal initialChange)
             {
@@ -61,50 +61,50 @@ namespace NewFinance.Core
                 }
             }
 
-            private readonly Dictionary<object, Subscription> _trackers = new Dictionary<object, Subscription>();
+            private readonly Dictionary<object, Subscription> _subscriptions = new Dictionary<object, Subscription>();
 
-            public string Name {get;set;} = "";
+            public required ITrackerKey Key {get;set;}
 
             public decimal TotalChange { get; private set; } = 0;
 
             public IEnumerable<(object subscriber, Subscription subscription)> GetSubscriptions()
             {
-                return _trackers.Select(kvp => (kvp.Key, kvp.Value));
+                return _subscriptions.Select(kvp => (kvp.Key, kvp.Value));
             }
 
             public Subscription this[object subscriber] => GetOrCreateTracker(subscriber, true);
 
             public Subscription GetOrCreateTracker(object subscriber, bool trackExistingChange)
             {
-                if (!_trackers.TryGetValue(subscriber, out var tracker))
+                if (!_subscriptions.TryGetValue(subscriber, out var tracker))
                 {
                     tracker = new Subscription(trackExistingChange ? TotalChange : 0);
-                    _trackers[subscriber] = tracker;
+                    _subscriptions[subscriber] = tracker;
                 }
                 return tracker;
             }
 
             public void CreateTracker(object subscriber, bool trackExistingChange)
             {
-                if (!_trackers.ContainsKey(subscriber))
+                if (!_subscriptions.ContainsKey(subscriber))
                 {
-                    _trackers[subscriber] = new Subscription(trackExistingChange ? TotalChange : 0);
+                    _subscriptions[subscriber] = new Subscription(trackExistingChange ? TotalChange : 0);
                 }
             }
 
             public void RemoveTracker(object subscriber)
             {
-                _trackers.Remove(subscriber);
+                _subscriptions.Remove(subscriber);
             }
 
             public void ClearTrackers()
             {
-                _trackers.Clear();
+                _subscriptions.Clear();
             }
 
             public void ResetAll()
             {
-                foreach (var tracker in _trackers.Values)
+                foreach (var tracker in _subscriptions.Values)
                 {
                     tracker.Reset();
                 }
@@ -113,7 +113,7 @@ namespace NewFinance.Core
             public void TrackChange(decimal increase)
             {
                 TotalChange += increase;
-                foreach (var tracker in _trackers.Values)
+                foreach (var tracker in _subscriptions.Values)
                 {
                     tracker.AddChange(increase);
                 }

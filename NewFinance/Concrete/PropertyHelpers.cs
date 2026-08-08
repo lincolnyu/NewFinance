@@ -1,4 +1,3 @@
-
 using NewFinance.Common;
 using NewFinance.Concrete.Accounts;
 using NewFinance.Core;
@@ -7,7 +6,7 @@ namespace NewFinance.Concrete.Contracts
 {
     public static class PropertyHelpers
     {
-        public const string ChangeTrackerSalesProceedsForTax = "SalesProceedsForTax";
+        public const string SalesProceedsForTaxTrackerName = "SalesProceedsForTax";
 
         public static Property CreatePropertyWithSchedule(string name, DateTime purchaseTime, decimal purchasePrice, decimal purchaseAdditionalCost, DateTime initialTime, decimal initialValue, decimal growthRate, 
             decimal priceValueCap,  decimal initialBaseAnnualFeeRate, decimal initialRentalFeeRate, decimal levyAndRatesInflationRate, Account cashAccount)
@@ -36,7 +35,10 @@ namespace NewFinance.Concrete.Contracts
             {
                 FlowHelpers.FlowCapping(rentalNetInFlowDescriptor, yearlyRentCap.Value/Constants.DaysPerYear, false);
             }
-            return new BandedFlow(rentalNetInFlowDescriptor, cashAccount, name);
+
+            var bandedFlow = new BandedFlow(rentalNetInFlowDescriptor, cashAccount, name);
+            bandedFlow.InflowTrackerKey = Helpers.CreateTrackerKeyWithSource(bandedFlow, "Inflow");
+            return bandedFlow;
         }
 
         public static Loan CreatePersonalLoan(string name, DateTime startTime, decimal loanAmount, Account cashAccount, decimal? loanTermYears, decimal annualInterestRate)
@@ -95,7 +97,8 @@ namespace NewFinance.Concrete.Contracts
                     salesCashIn += loanRepayment;
                 }
 
-                executor.ChangeTrackers?.GetOrCreateTracker(property, ChangeTrackerSalesProceedsForTax).TrackChange(salesProceeds);
+                var trackerKey = Helpers.CreateTrackerKeyWithSource(property, SalesProceedsForTaxTrackerName);
+                executor.ChangeTrackers?.GetOrCreateTracker(trackerKey).TrackChange(salesProceeds);
 
                 executor.ExecuteTransaction(cashAccount, salesCashIn, schedule, $"Proceeds from sale of {property.Name}");
                 

@@ -2,6 +2,8 @@ namespace NewFinance.Core
 {
     public static class Helpers
     {
+        public static TrackerKeyWithSource CreateTrackerKeyWithSource(object source, string name) => new TrackerKeyWithSource(source, name);
+
         public static void AddAsset(this Entity entity, Account account, decimal ownershipFraction)
         {
             entity.Assets.Add(account);

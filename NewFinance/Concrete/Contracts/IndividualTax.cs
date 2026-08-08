@@ -41,11 +41,11 @@ namespace NewFinance.Concrete.Contracts
 
                     var loan = TaxPayer.Liabilities.OfType<Loan>().FirstOrDefault(loan => loan.Contract!.Property == property);
                     
-                    var netRentalIncome = executor.ChangeTrackers?[propertySchedule.RentInducedStream, Common.BandedFlow.ChangeTrackerInflow][this].GetTrackedChangeAndReset() * share ?? 0m;
+                    var netRentalIncome = executor.ChangeTrackers?[propertySchedule.RentInducedStream.InflowTrackerKey][this].GetTrackedChangeAndReset() * share ?? 0m;
 
-                    var interestPaid = (-executor.ChangeTrackers?[loan?.Contract!, LoanContract.ChangeTrackerPaidInterest][this].GetTrackedChangeAndReset() ?? 0m) * share;
+                    var interestPaid = ( loan?.Contract!.PaidInterestTrackerKey is not null ? -executor.ChangeTrackers?[loan?.Contract!.PaidInterestTrackerKey][this].GetTrackedChangeAndReset() ?? 0m : 0m) * share;
 
-                    var fees = (-executor.ChangeTrackers?[propertySchedule, PropertySchedule.ChangeTrackerPropertyFees][this].GetTrackedChangeAndReset()?? 0m) * share;
+                    var fees = (-executor.ChangeTrackers?[propertySchedule.PropertyFeesTrackerKey][this].GetTrackedChangeAndReset()?? 0m) * share;
 
                     var netRentalTaxable = netRentalIncome - interestPaid - fees;
 
@@ -60,7 +60,7 @@ namespace NewFinance.Concrete.Contracts
 
                         decimal? netCapitalGain = null;
 
-                        if (executor.ChangeTrackers?.TryGetTracker(property, PropertyHelpers.ChangeTrackerSalesProceedsForTax, out var salesProceedsTracker) == true) // just sold
+                        if (executor.ChangeTrackers?.TryGetTracker(property , PropertyHelpers.SalesProceedsForTaxTrackerName, out var salesProceedsTracker) == true) // just sold
                         {
                             // Do not reset here as it may be used by another tax individual if co-owned.
                             decimal salesProceeds = salesProceedsTracker![this].TrackedChange;

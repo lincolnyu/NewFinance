@@ -7,9 +7,7 @@ namespace NewFinance.Concrete.Contracts
     public class PropertySchedule
         : InvestmentSchedule
     {
-
-        public const string ChangeTrackerPropertyFees  = "PropertyFees";
-
+        public ITrackerKey? PropertyFeesTrackerKey { get; set; }
 
         public PropertySchedule(Property property, DateTime purchaseTime, decimal purchasePrice, DateTime startTime, decimal initialValue, Func<decimal, decimal> getGrowthRate,  Account costPaymentAccount)  
             : base(property, startTime, initialValue, getGrowthRate)
@@ -35,7 +33,10 @@ namespace NewFinance.Concrete.Contracts
                     // TODO Additional costs such as repair, adhoc...
                     // TODO some of the government fees such as land tax could be proportional to the property value.
 
-                    executor.ChangeTrackers?.GetOrCreateTracker(schedule, ChangeTrackerPropertyFees).TrackChange(-fees);
+                    if (PropertyFeesTrackerKey is not null)
+                    {
+                        executor.ChangeTrackers?.GetOrCreateTracker(PropertyFeesTrackerKey).TrackChange(-fees);
+                    }
 
                     if (currentTime == schedule.Sale?.Time)
                     {
