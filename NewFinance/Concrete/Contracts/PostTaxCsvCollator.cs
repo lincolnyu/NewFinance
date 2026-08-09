@@ -104,7 +104,7 @@ namespace NewFinance.Concrete.Contracts
 
             if(currentTime.IsEOFY())
             {
-                foreach (var (obj, name, tracker) in executor.ChangeTrackers?.GetTrackers()?? [])
+                foreach (var (_, tracker) in executor.ChangeTrackers?.GetTrackers()?? [])
                 {
                     foreach (var (subscriber, subscription) in tracker.GetSubscriptions())
                     {

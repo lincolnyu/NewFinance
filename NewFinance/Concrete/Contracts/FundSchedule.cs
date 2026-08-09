@@ -6,10 +6,9 @@ namespace NewFinance.Concrete.Contracts
 {
     public class FundSchedule : InvestmentSchedule
     {
-
-        public const string ChangeTrackerFundCapitalGain  = "FundCapitalGain";
-        public const string ChangeTrackerFundYield  = "FundYield";
-        public const string ChangeTrackerFundFees  = "FundFees";
+        public ITrackerKey? FundCapitalGainTrackerKey { get; init; }
+        public ITrackerKey? FundYieldTrackerKey { get; init; }
+        public ITrackerKey? FundFeesTrackerKey { get; init; }
 
         private Dictionary<decimal, decimal> _positions = new Dictionary<decimal, decimal>();   // Price to shares mapping.
 
@@ -32,6 +31,7 @@ namespace NewFinance.Concrete.Contracts
                     if (cash is not null)
                     {
                         (var cashAccount, var cashAmount) = cash(yield); 
+                        executor.ExecuteTransaction(cashAccount, cashAmount, schedule.YieldContract!, $"Yield for {schedule.Investment.Name}");
                         reinvestment -= cashAmount;
 
                         if (reinvestment < 0)
@@ -50,7 +50,10 @@ namespace NewFinance.Concrete.Contracts
                         if(cashAmount > 0)
                         {
                             executor.ExecuteTransaction(cashAccount, cashAmount, YieldContract!, $"Yield for {schedule.Investment.Name}");
-                            executor.ChangeTrackers?.GetOrCreateTracker(this, ChangeTrackerFundYield).TrackChange(cashAmount);
+                            if (FundYieldTrackerKey is not null)
+                            {
+                                executor.ChangeTrackers?.GetOrCreateTracker(FundYieldTrackerKey).TrackChange(cashAmount);
+                            }
                             // tax for yield
                         }
                     }
@@ -82,7 +85,10 @@ namespace NewFinance.Concrete.Contracts
                         }
                         var fees = fee * (currentTime - lastTime).Days / Constants.DaysPerYear;
 
-                        executor.ChangeTrackers?.GetOrCreateTracker(schedule, ChangeTrackerFundFees).TrackChange(-fees);
+                        if (FundFeesTrackerKey is not null)
+                        {
+                            executor.ChangeTrackers?.GetOrCreateTracker(FundFeesTrackerKey).TrackChange(-fees);
+                        }
 
                         executor.ExecuteTransaction(schedule.FeePaymentAccount?? schedule.Investment, -fees, schedule.FeeContract!, $"Fees for {schedule.Investment.Name}");
                     });
@@ -118,9 +124,9 @@ namespace NewFinance.Concrete.Contracts
                         profit = (currentPrice - position.Key) * position.Value + (profit ?? 0);
                     }
                     executor.ExecuteTransaction(Investment, -Investment.Balance, this, $"Sell all shares for {Investment.Name}");
-                    if (profit != 0)
+                    if (profit != 0 && FundCapitalGainTrackerKey is not null)
                     {
-                        executor.ChangeTrackers?.GetOrCreateTracker(this, ChangeTrackerFundCapitalGain).TrackChange(profit ?? 0);
+                        executor.ChangeTrackers?.GetOrCreateTracker(FundCapitalGainTrackerKey).TrackChange(profit ?? 0);
                     }
                     return;
                 }
@@ -155,9 +161,9 @@ namespace NewFinance.Concrete.Contracts
 
                 executor.ExecuteTransaction(Investment, netFund, this, $"Sell shares for {Investment.Name}");
 
-                if (profit != 0)
+                if (profit != 0 && FundCapitalGainTrackerKey is not null)
                 {
-                    executor.ChangeTrackers?.GetOrCreateTracker(this, ChangeTrackerFundCapitalGain).TrackChange(profit ?? 0);
+                    executor.ChangeTrackers?.GetOrCreateTracker(FundCapitalGainTrackerKey).TrackChange(profit ?? 0);
                 }
 
                 if (sharesToSell > 0)

@@ -49,15 +49,15 @@ public class IndividualTaxTests
         var employment = new Employment(
             FlowHelpers.ConstantFlowDescriptor(new DateTime(2025, 1, 1), 0m),
             taxpayer,
-            cash);
-        var tax = new IndividualTax(taxpayer, cash);
+            cash).CreateAllNaturalTrackerKeys();
+        var tax = new IndividualTax(taxpayer, cash).CreateAllNaturalTrackerKeys();
 
         var executor = new ContractExecutor();
         var changeTrackers  = new ChangeTrackers();
 
         taxpayer.TaxableContracts.Add(employment);
-        changeTrackers.GetOrCreateTracker(employment, Common.BandedFlow.ChangeTrackerInflow).TrackChange(100_000m);
-        changeTrackers.GetOrCreateTracker(employment, Employment.ChangeTrackerPaygWithheld).TrackChange(25_000m);
+        changeTrackers.GetOrCreateTracker(employment.InflowTrackerKey!).TrackChange(100_000m);
+        changeTrackers.GetOrCreateTracker(employment.PaygWithheldTrackerKey!).TrackChange(25_000m);
         
         executor.Contracts.Add(tax);
         executor.ChangeTrackers = changeTrackers;
@@ -65,6 +65,6 @@ public class IndividualTaxTests
 
         Assert.Equal(2_212m, cash.Balance);
         
-        Assert.Equal(-22_788m, changeTrackers.GetOrCreateTracker(tax, IndividualTax.ChangeTrackerTaxPaid).TotalChange);
+        Assert.Equal(-22_788m, changeTrackers.GetOrCreateTracker(tax.TaxPaidTrackerKey!).TotalChange);
     }
 }

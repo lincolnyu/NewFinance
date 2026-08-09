@@ -2,10 +2,12 @@ using NewFinance.Core;
 
 namespace NewFinance.Common
 {
-    class ContractAdder
+    class ContractLoader
     {
         HashSet<Contract> _addedContracts = new HashSet<Contract>();
+        
         public List<Contract> OrderedContracts { get; } = new List<Contract>();
+
         public void AddContract(Contract contract)
         {
             if (_addedContracts.Add(contract))
@@ -22,7 +24,7 @@ namespace NewFinance.Common
             }
         }
 
-        public void LoadExecutor(ContractExecutor executor)
+        public void LoadToExecutor(ContractExecutor executor)
         {
             executor.Contracts.AddRange(OrderedContracts);
         }

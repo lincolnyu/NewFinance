@@ -4,7 +4,7 @@ namespace NewFinance.Common
 {
     public class BandedFlow(BandedFlowDescriptor descriptor, Account account, string name) : AccountBindingContract(descriptor.StartTime, account, name)
     {
-        public const string ChangeTrackerInflow = "InflowTracker";
+        public ITrackerKey? InflowTrackerKey { get; set; }
 
         public int CurrentInflowIndex { get; private set; } = -1;
 
@@ -12,16 +12,11 @@ namespace NewFinance.Common
 
         protected TimeSpan? FlowBookingInterval { get; set; }
 
-        public List<(DateTime Time, decimal Amount)> Bursts { get; } = new List<(DateTime, decimal)>();
-
-        public int BurstIndex { get; private set; } = 0;
-
         protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
         {
             // If there is a burst at the current time, apply the burst first before applying the steady flow logic, and move to the next burst.
             if (currentTime == StartTime)
             {
-                BurstIndex = 0;
                 CurrentInflowIndex = 0;
                 NextFlowChangeUpdateDate = descriptor.Inflows[CurrentInflowIndex].EndTime; // currentTime.NextAnniversayCrossing(descriptor.YearlyFlowChangeUpdateMonth, descriptor.YearlyFlowChangeUpdateDay);
             }
@@ -56,28 +51,16 @@ namespace NewFinance.Common
 
             var nextBookedTime = GetNextBookedTime(currentTime);
 
-            var nextBurstTime = BurstIndex < Bursts.Count ? Bursts[BurstIndex].Time : (DateTime?)null;
-            if (nextBurstTime == currentTime)
-            {
-                var burstAmount = Bursts[BurstIndex].Amount;
-                executor.ExecuteTransaction(Account!, burstAmount, this, $"Burst at {currentTime} for {Name}");
-                executor.ChangeTrackers?[this, ChangeTrackerInflow].TrackChange(burstAmount);
-                BurstIndex++;
-
-                nextBurstTime = BurstIndex < Bursts.Count ? Bursts[BurstIndex].Time : (DateTime?)null;
-            }
-            if (nextBurstTime is not null && nextBurstTime < nextBookedTime)
-            {
-                nextBookedTime = nextBurstTime.Value;
-            }
-
             return (currentTime, nextBookedTime);
         }
 
         protected virtual void ApplyInflow(ContractExecutor executor, decimal inflow, TimeSpan executionTimeSpan)
         {
             executor.ExecuteTransaction(Account!, inflow, this, $"Inflow for {Name}");
-            executor.ChangeTrackers?[this, ChangeTrackerInflow].TrackChange(inflow);
+            if (InflowTrackerKey is not null)
+            {
+                executor.ChangeTrackers?[InflowTrackerKey].TrackChange(inflow);
+            }
         }
 
         private DateTime GetNextBookedTime(DateTime currentTime)

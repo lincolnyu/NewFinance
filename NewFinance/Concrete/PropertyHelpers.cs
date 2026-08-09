@@ -1,4 +1,3 @@
-
 using NewFinance.Common;
 using NewFinance.Concrete.Accounts;
 using NewFinance.Core;
@@ -7,7 +6,9 @@ namespace NewFinance.Concrete.Contracts
 {
     public static class PropertyHelpers
     {
-        public const string ChangeTrackerSalesProceedsForTax = "SalesProceedsForTax";
+        public const string SalesProceedsForTaxTrackerName = "SalesProceedsForTax";
+
+        public static ITrackerKey SalesProceedsForTaxTrackerKey(Property property) => Helpers.CreateTrackerKeyWithSource(property, SalesProceedsForTaxTrackerName);
 
         public static Property CreatePropertyWithSchedule(string name, DateTime purchaseTime, decimal purchasePrice, decimal purchaseAdditionalCost, DateTime initialTime, decimal initialValue, decimal growthRate, 
             decimal priceValueCap,  decimal initialBaseAnnualFeeRate, decimal initialRentalFeeRate, decimal levyAndRatesInflationRate, Account cashAccount)
@@ -22,7 +23,7 @@ namespace NewFinance.Concrete.Contracts
                 InitialAnnualBaseFeeRate = initialBaseAnnualFeeRate,
                 InitialAnnualRentalFeeRate = initialRentalFeeRate,
                 FeeInflation = FlowHelpers.ConstantInflation(purchaseTime, levyAndRatesInflationRate)
-            };
+            }.CreateAllNaturalTrackerKeys();
             property.Schedule = schedule;
             return property;
         }
@@ -36,7 +37,8 @@ namespace NewFinance.Concrete.Contracts
             {
                 FlowHelpers.FlowCapping(rentalNetInFlowDescriptor, yearlyRentCap.Value/Constants.DaysPerYear, false);
             }
-            return new BandedFlow(rentalNetInFlowDescriptor, cashAccount, name);
+
+            return new BandedFlow(rentalNetInFlowDescriptor, cashAccount, name).CreateAllNaturalTrackerKeys();
         }
 
         public static Loan CreatePersonalLoan(string name, DateTime startTime, decimal loanAmount, Account cashAccount, decimal? loanTermYears, decimal annualInterestRate)
@@ -48,7 +50,7 @@ namespace NewFinance.Concrete.Contracts
                 CashAccount = cashAccount,
                 LoanTermYears = loanTermYears,
                 AnnualInterestRate = annualInterestRate
-            };
+            }.CreateAllNaturalTrackerKeys();
             loan.Contract = loanContract;
 
             return loan;
@@ -64,7 +66,7 @@ namespace NewFinance.Concrete.Contracts
                 OffsetRatio = offsetRatio,
                 LoanTermYears = loanTermYears,
                 AnnualInterestRate = annualInterestRate
-            };
+            }.CreateAllNaturalTrackerKeys();
             loan.Contract = loanContract;
 
             return loan;
@@ -95,7 +97,8 @@ namespace NewFinance.Concrete.Contracts
                     salesCashIn += loanRepayment;
                 }
 
-                executor.ChangeTrackers?.GetOrCreateTracker(property, ChangeTrackerSalesProceedsForTax).TrackChange(salesProceeds);
+                var trackerKey = SalesProceedsForTaxTrackerKey(property);
+                executor.ChangeTrackers?.GetOrCreateTracker(trackerKey).TrackChange(salesProceeds);
 
                 executor.ExecuteTransaction(cashAccount, salesCashIn, schedule, $"Proceeds from sale of {property.Name}");
                 

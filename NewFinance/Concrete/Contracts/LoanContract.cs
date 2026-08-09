@@ -6,8 +6,9 @@ namespace NewFinance.Concrete.Contracts
 {
     public class LoanContract : AccountBindingContract
     {
-        public const string ChangeTrackerPaidInterest = "PaidInterestTracker";
-        public const string ChangeTrackerPaidPrincipal = "PaidPrincipalTracker";
+        public ITrackerKey? PaidInterestTrackerKey { get; set; }
+
+        public ITrackerKey? PaidPrincipalTrackerKey { get; set; }
 
         public Property? Property { get; private set; }
 
@@ -148,14 +149,20 @@ namespace NewFinance.Concrete.Contracts
                 executor.ExecuteTransaction(CashAccount, -(interest + principalPayment), this, $"P+I repayment for {Name}");
                 executor.ExecuteTransaction(Account!, principalPayment, this, $"Principal payment for {Name}");
 
-                executor.ChangeTrackers?[this, ChangeTrackerPaidPrincipal].TrackChange(-principalPayment);
+                if (PaidPrincipalTrackerKey is not null)
+                {
+                    executor.ChangeTrackers?[PaidPrincipalTrackerKey].TrackChange(-principalPayment);
+                }
             }
             else
             {
                 executor.ExecuteTransaction(CashAccount, -interest, this, $"Interest payment for {Name}");
             }
 
-            executor.ChangeTrackers?[this, ChangeTrackerPaidInterest].TrackChange(-interest);
+            if (PaidInterestTrackerKey is not null)
+            {
+                executor.ChangeTrackers?[PaidInterestTrackerKey].TrackChange(-interest);
+            }
         }
     }
 }
