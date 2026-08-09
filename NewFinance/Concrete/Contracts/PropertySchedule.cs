@@ -4,8 +4,7 @@ using NewFinance.Core;
 
 namespace NewFinance.Concrete.Contracts
 {
-    public class PropertySchedule
-        : InvestmentSchedule
+    public class PropertySchedule : InvestmentSchedule
     {
         public ITrackerKey? PropertyFeesTrackerKey { get; set; }
 

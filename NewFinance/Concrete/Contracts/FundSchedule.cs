@@ -31,6 +31,7 @@ namespace NewFinance.Concrete.Contracts
                     if (cash is not null)
                     {
                         (var cashAccount, var cashAmount) = cash(yield); 
+                        executor.ExecuteTransaction(cashAccount, cashAmount, schedule.YieldContract!, $"Yield for {schedule.Investment.Name}");
                         reinvestment -= cashAmount;
 
                         if (reinvestment < 0)

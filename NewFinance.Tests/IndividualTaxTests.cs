@@ -49,10 +49,8 @@ public class IndividualTaxTests
         var employment = new Employment(
             FlowHelpers.ConstantFlowDescriptor(new DateTime(2025, 1, 1), 0m),
             taxpayer,
-            cash);
-        employment.CreateAllNaturalTrackerKeys();
-        var tax = new IndividualTax(taxpayer, cash);
-        tax.CreateAllNaturalTrackerKeys();
+            cash).CreateAllNaturalTrackerKeys();
+        var tax = new IndividualTax(taxpayer, cash).CreateAllNaturalTrackerKeys();
 
         var executor = new ContractExecutor();
         var changeTrackers  = new ChangeTrackers();

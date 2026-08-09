@@ -45,7 +45,7 @@ namespace NewFinance.Concrete.Contracts
 
                     var interestPaid = (-executor.GetOrCreateTrackerSubscription(loan?.Contract?.PaidInterestTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m) * share;
 
-                    var fees = (executor.GetOrCreateTrackerSubscription(propertySchedule.PropertyFeesTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m) * share;
+                    var fees = (-executor.GetOrCreateTrackerSubscription(propertySchedule.PropertyFeesTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m) * share;
 
                     var netRentalTaxable = netRentalIncome - interestPaid - fees;
 
