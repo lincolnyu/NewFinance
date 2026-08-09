@@ -4,6 +4,8 @@ namespace NewFinance.Concrete.Contracts
 {
     public class PostTaxCsvCollator(TextWriter? writer = null) : Contract(null, "Post Tax CSV Collator")
     {
+        public const string UnnamedColumnHeader = "<unnamed>";
+
         private readonly TextWriter? _writer = writer;
 
         public List<List<object?>> Table { get; } = [];
@@ -14,13 +16,17 @@ namespace NewFinance.Concrete.Contracts
 
         public List<string> ColumnNames {get;} = [];
 
-        public string GetColumnName((object, string) col)
+        private string GetColumnName((object, string?) col)
         {
+            if (!string.IsNullOrEmpty(col.Item2))
+            {
+                return col.Item2;
+            }
             if (col.Item1 is IHasName hasName && !string.IsNullOrWhiteSpace(hasName.Name))
             {
                 return hasName.Name;
             }
-            return col.Item2;
+            return UnnamedColumnHeader;
         }
 
         protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
@@ -54,13 +60,20 @@ namespace NewFinance.Concrete.Contracts
                             }
                             if (populateColumNames)
                             {
-                                ColumnNames.Add($"{entity.Name}.{account.Name}");
+                                if (!string.IsNullOrEmpty(col!.Item2))
+                                {
+                                    ColumnNames.Add($"{col!.Item2}{account.Name}");
+                                }
+                                else
+                                {
+                                    ColumnNames.Add($"{entity.Name}.{account.Name}");
+                                }
                             }
                         }
                     }
                     else if (col.Item1 is IHasBalance balanceItem)
                     {
-                        var name = GetColumnName(col);
+                        var name = GetColumnName(col!);
                         _writer?.WriteLine($" '{name}' balance = {balanceItem.Balance:N2}");
                         row.Add(balanceItem.Balance);
                         if (populateColumNames)
@@ -71,7 +84,7 @@ namespace NewFinance.Concrete.Contracts
                     else if (col.Item1 is Func<ChangeTrackers.Tracker> getTracker || col.Item1 is ChangeTrackers.Tracker)
                     {
                         var tracker = col.Item1 is Func<ChangeTrackers.Tracker> func ? func() : (ChangeTrackers.Tracker)col.Item1;
-                        var name = GetColumnName(col);
+                        var name = GetColumnName(col!);
                         if (name.EndsWith("ITD"))
                         {
                             var val = tracker["PostTaxCsvCollator-ITD"].TrackedChange;
