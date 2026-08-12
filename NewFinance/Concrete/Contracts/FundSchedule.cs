@@ -31,7 +31,6 @@ namespace NewFinance.Concrete.Contracts
                     if (cash is not null)
                     {
                         (var cashAccount, var cashAmount) = cash(yield); 
-                        executor.ExecuteTransaction(cashAccount, cashAmount, schedule.YieldContract!, $"Yield for {schedule.Investment.Name}");
                         reinvestment -= cashAmount;
 
                         if (reinvestment < 0)
@@ -90,7 +89,25 @@ namespace NewFinance.Concrete.Contracts
                             executor.ChangeTrackers?.GetOrCreateTracker(FundFeesTrackerKey).TrackChange(-fees);
                         }
 
-                        executor.ExecuteTransaction(schedule.FeePaymentAccount?? schedule.Investment, -fees, schedule.FeeContract!, $"Fees for {schedule.Investment.Name}");
+                        decimal remainingFees = fees;
+                        if (schedule.FeePaymentAccount is not null)
+                        {
+                            if(schedule.FeePaymentAccount.Balance > remainingFees)
+                            {
+                                executor.ExecuteTransaction(schedule.FeePaymentAccount, -remainingFees, schedule.FeeContract!, $"Fees for {schedule.Investment.Name}");
+                                remainingFees = 0;
+                            }
+                            else
+                            {
+                                executor.ExecuteTransaction(schedule.FeePaymentAccount, -schedule.FeePaymentAccount.Balance, schedule.FeeContract!, $"Fees for {schedule.Investment.Name}");
+                                remainingFees -= schedule.FeePaymentAccount.Balance;
+                            }
+                        }
+                        
+                        if (remainingFees > 0)
+                        {
+                            Trade(executor, -remainingFees, out var _);
+                        }
                     });
 
                     return (currentTime, newBookedTime); // Returning null as booked time letting the primary contract to drive.
@@ -98,31 +115,31 @@ namespace NewFinance.Concrete.Contracts
             );
         }
 
-        public void Trade(ContractExecutor executor, decimal netFund, out decimal? profit)
+        public void Trade(ContractExecutor executor, decimal netBuy, out decimal? profit)
         {
             profit = null;
             var currentPrice = this.Value.CurrentPricePerShare;
-            decimal shares = netFund / currentPrice;
-            if (netFund > 0)    // buy
+            decimal shares = netBuy / currentPrice;
+            if (netBuy > 0)    // buy
             {
                 _positions[currentPrice] = _positions.GetValueOrDefault(currentPrice, 0m) + shares;
-                executor.ExecuteTransaction(Investment, netFund, this, $"Buy shares for {Investment.Name}");
+                executor.ExecuteTransaction(Investment, netBuy, this, $"Buy shares for {Investment.Name}");
             }
             else    // sell
             {
                 decimal sharesToSell = -shares;
-                if (-netFund > Investment.Balance)
+                if (-netBuy > Investment.Balance) // sell amount is greater than balance. it's an error
                 {
                     return;
                 }
 
-                if (-netFund == Investment.Balance)
+                if (-netBuy == Investment.Balance)
                 {
-                    _positions.Clear();
                     foreach (var position in _positions)
                     {
                         profit = (currentPrice - position.Key) * position.Value + (profit ?? 0);
                     }
+                    _positions.Clear();
                     executor.ExecuteTransaction(Investment, -Investment.Balance, this, $"Sell all shares for {Investment.Name}");
                     if (profit != 0 && FundCapitalGainTrackerKey is not null)
                     {
@@ -159,7 +176,7 @@ namespace NewFinance.Concrete.Contracts
                     }
                 }
 
-                executor.ExecuteTransaction(Investment, netFund, this, $"Sell shares for {Investment.Name}");
+                executor.ExecuteTransaction(Investment, netBuy, this, $"Sell shares for {Investment.Name}");
 
                 if (profit != 0 && FundCapitalGainTrackerKey is not null)
                 {
