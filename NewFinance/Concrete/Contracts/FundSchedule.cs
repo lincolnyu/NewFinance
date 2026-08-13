@@ -103,8 +103,12 @@ namespace NewFinance.Concrete.Contracts
                                 remainingFees -= schedule.FeePaymentAccount.Balance;
                             }
                         }
-                        
-                        if (remainingFees > 0)
+
+                        if (remainingFees > Investment.Balance)
+                        {
+                            // TODO Handle and report the error
+                        }
+                        else if (remainingFees > 0)
                         {
                             Trade(executor, -remainingFees, out var _);
                         }
@@ -118,7 +122,7 @@ namespace NewFinance.Concrete.Contracts
         public void Trade(ContractExecutor executor, decimal netBuy, out decimal? profit)
         {
             profit = null;
-            var currentPrice = this.Value.CurrentPricePerShare;
+            var currentPrice = Value.CurrentPricePerShare;
             decimal shares = netBuy / currentPrice;
             if (netBuy > 0)    // buy
             {
@@ -130,6 +134,7 @@ namespace NewFinance.Concrete.Contracts
                 decimal sharesToSell = -shares;
                 if (-netBuy > Investment.Balance) // sell amount is greater than balance. it's an error
                 {
+                    // TODO report the error
                     return;
                 }
 
