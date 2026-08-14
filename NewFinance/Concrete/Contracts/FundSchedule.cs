@@ -77,40 +77,40 @@ namespace NewFinance.Concrete.Contracts
                         var schedule = (FundSchedule)context;
                         var lastTime = lastProcessedTime ?? schedule.StartTime!.Value;
 
-                        var fee = schedule.Investment.Balance * FeeRateToValue;
-                        if (fee > FeeCap)
+                        var anualFee = schedule.Investment.Balance * FeeRateToValue;
+                        if (anualFee > FeeCap)
                         {
-                            fee = FeeCap.Value;
+                            anualFee = FeeCap.Value;
                         }
-                        var fees = fee * (currentTime - lastTime).Days / Constants.DaysPerYear;
+                        var fee = anualFee * (currentTime - lastTime).Days / Constants.DaysPerYear;
 
                         if (FundFeesTrackerKey is not null)
                         {
-                            executor.ChangeTrackers?.GetOrCreateTracker(FundFeesTrackerKey).TrackChange(-fees);
+                            executor.ChangeTrackers?.GetOrCreateTracker(FundFeesTrackerKey).TrackChange(-fee);
                         }
 
-                        decimal remainingFees = fees;
+                        decimal remainingFee = fee;
                         if (schedule.FeePaymentAccount is not null)
                         {
-                            if(schedule.FeePaymentAccount.Balance > remainingFees)
+                            if(schedule.FeePaymentAccount.Balance > remainingFee)
                             {
-                                executor.ExecuteTransaction(schedule.FeePaymentAccount, -remainingFees, schedule.FeeContract!, $"Fees for {schedule.Investment.Name}");
-                                remainingFees = 0;
+                                executor.ExecuteTransaction(schedule.FeePaymentAccount, -remainingFee, schedule.FeeContract!, $"Fees for {schedule.Investment.Name}");
+                                remainingFee = 0;
                             }
                             else
                             {
                                 executor.ExecuteTransaction(schedule.FeePaymentAccount, -schedule.FeePaymentAccount.Balance, schedule.FeeContract!, $"Fees for {schedule.Investment.Name}");
-                                remainingFees -= schedule.FeePaymentAccount.Balance;
+                                remainingFee -= schedule.FeePaymentAccount.Balance;
                             }
                         }
 
-                        if (remainingFees > Investment.Balance)
+                        if (remainingFee > Investment.Balance)
                         {
                             // TODO Handle and report the error
                         }
-                        else if (remainingFees > 0)
+                        else if (remainingFee > 0)
                         {
-                            Trade(executor, -remainingFees, out var _);
+                            Trade(executor, -remainingFee, out var _);
                         }
                     });
 
@@ -200,7 +200,9 @@ namespace NewFinance.Concrete.Contracts
         public ContextualContract FeeContract { get; }
 
         public TimeSpan FeePeriod { get; set; }
+
         public decimal FeeRateToValue { get; set; }
+
         public decimal? FeeCap { get; set; }
 
         public Account? FeePaymentAccount { get; set; }
