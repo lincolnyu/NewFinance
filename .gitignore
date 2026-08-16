@@ -1,5 +1,5 @@
 .*/
 bin/
 obj/
-ProgramPrivate.cs
+*PrivateApp*
 *.csv
