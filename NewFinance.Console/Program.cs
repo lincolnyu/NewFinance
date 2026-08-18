@@ -1,4 +1,5 @@
-﻿using NewFinance.Concrete.Entities;
+﻿using System.Security.Cryptography.X509Certificates;
+using NewFinance.Concrete.Entities;
 using NewFinance.Configuration;
 using NewFinance.Core;
 
@@ -77,7 +78,12 @@ while(config is null)
         }
         else
         {
-            if (ReadYesOrNoUntilAnswered($"Add another or edit an existing tax individual (currently {config.TaxIndividuals.Count})"))
+            Console.WriteLine($"Current {config.TaxIndividuals.Count} tax individuals:");
+            foreach (var ind in config.TaxIndividuals)
+            {
+                Console.WriteLine($" {ind.Name}");
+            }
+            if (ReadYesOrNoUntilAnswered($"Add another or edit an existing tax individual"))
             {
                 addIndividual = true;
             }
@@ -93,7 +99,7 @@ while(config is null)
             var name = Answer("Name of the individual:");
             if (!string.IsNullOrWhiteSpace(name))
             {
-                individual = config.TaxIndividuals.FirstOrDefault(x=>x.Name==name);
+                individual = config.TaxIndividuals.FirstOrDefault(x=>x.Name == name);
                 if (individual is null)
                 {
                     individual = new TaxIndividual
@@ -104,9 +110,9 @@ while(config is null)
                 }
                 else
                 {
-                     if (ReadYesOrNoUntilAnswered($"An existing individual named {name} is found. Rename it?"))
+                    if (ReadYesOrNoUntilAnswered($"An existing individual named {name} is found. Rename it"))
                     {
-                        name = Answer("Name of the individual to rename to:");
+                        name = Answer("Name of the individual to rename to (leave it blank to NOT rename):");
                         if (!string.IsNullOrWhiteSpace(name))
                         {
                             individual.Name = name!.Trim();
@@ -122,7 +128,12 @@ while(config is null)
     while (true)
     {
         bool addFamily = false;
-        if (ReadYesOrNoUntilAnswered($"Add or edit a family (currently {config.Families.Count})?"))
+        Console.WriteLine($"Current {config.Families.Count} families:");
+        foreach (var fam in config.Families)
+        {
+            Console.WriteLine($" {fam.Name}");
+        }
+        if (ReadYesOrNoUntilAnswered($"Add or edit a family"))
         {
             addFamily = true;
         }
@@ -148,9 +159,9 @@ while(config is null)
                 }
                 else
                 {
-                    if (ReadYesOrNoUntilAnswered($"An existing family named {name} is found. Rename it?"))
+                    if (ReadYesOrNoUntilAnswered($"An existing family named {name} is found. Rename it"))
                     {
-                        name = Answer("Name of the family to rename to:");
+                        name = Answer("Name of the family to rename to (leave it blank to NOT rename):");
                         if (!string.IsNullOrWhiteSpace(name))
                         {
                             family.Name = name!.Trim();
@@ -160,9 +171,43 @@ while(config is null)
                 break;
             }
         }
-        if (family.TaxMembers.Count > 0)
+        while (true)
         {
-            if (ReadYesOrNoUntilAnswered($""))
+            if (!ReadYesOrNoUntilAnswered($"Add or edit a family member"))
+            {
+                break;
+            }
+
+            Console.WriteLine($"Current {family.TaxMembers.Count} family members:");
+            foreach (var ti in config.TaxIndividuals)
+            {
+                if (family.TaxMembers.Contains(ti))
+                {
+                    Console.WriteLine($" * {ti.Name}");
+                }
+                else
+                {
+                    Console.WriteLine($"   {ti.Name}");
+                }
+            }
+            var name = Answer("Name of the member to add/remove:");
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                var member = config.TaxIndividuals.FirstOrDefault(x=>x.Name == name);
+                if(member is not null)
+                {
+                    if (family.TaxMembers.Contains(member))
+                    {
+                        family.TaxMembers.Remove(member);
+                        Console.WriteLine("Member remobed.");
+                    }
+                    else
+                    {
+                        family.TaxMembers.Add(member);
+                        Console.WriteLine("Member added.");
+                    }
+                }
+            }
         }
         while (true)
         {
