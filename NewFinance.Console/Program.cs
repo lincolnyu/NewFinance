@@ -1,4 +1,5 @@
-﻿using NewFinance.Concrete.Entities;
+﻿using System.Security.Cryptography.X509Certificates;
+using NewFinance.Concrete.Entities;
 using NewFinance.Configuration;
 
 Console.WriteLine("At any point, press Ctrl+C or close the command window to quit.");
@@ -76,7 +77,12 @@ while(config is null)
         }
         else
         {
-            if (ReadYesOrNoUntilAnswered("Add another tax individual (Y or N)"))
+            Console.WriteLine($"Current {config.TaxIndividuals.Count} tax individuals:");
+            foreach (var ind in config.TaxIndividuals)
+            {
+                Console.WriteLine($" {ind.Name}");
+            }
+            if (ReadYesOrNoUntilAnswered($"Add another or edit an existing tax individual"))
             {
                 addIndividual = true;
             }
@@ -90,9 +96,28 @@ while(config is null)
         while (true)
         {
             var name = Answer("Name of the individual:");
-            if (string.IsNullOrWhiteSpace(name))
+            if (!string.IsNullOrWhiteSpace(name))
             {
-                individual.Name = name!.Trim();
+                individual = config.TaxIndividuals.FirstOrDefault(x=>x.Name == name);
+                if (individual is null)
+                {
+                    individual = new TaxIndividual
+                    {
+                        Name = name!.Trim()
+                    };
+                    Console.WriteLine($"A new individual named {name} is added.");
+                }
+                else
+                {
+                    if (ReadYesOrNoUntilAnswered($"An existing individual named {name} is found. Rename it"))
+                    {
+                        name = Answer("Name of the individual to rename to (leave it blank to NOT rename):");
+                        if (!string.IsNullOrWhiteSpace(name))
+                        {
+                            individual.Name = name!.Trim();
+                        }
+                    }
+                }
                 break;
             }
         }
@@ -102,11 +127,103 @@ while(config is null)
 
     while (true)
     {
-        
+        bool addFamily = false;
+        Console.WriteLine($"Current {config.Families.Count} families:");
+        foreach (var fam in config.Families)
+        {
+            Console.WriteLine($" {fam.Name}");
+        }
+        if (ReadYesOrNoUntilAnswered($"Add or edit a family"))
+        {
+            addFamily = true;
+        }
+        if (!addFamily)
+        {
+            break;
+        }
+
+        Family? family = null;
+        while (true)
+        {
+            var name = Answer("Name of the family:");
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                family = config.Families.FirstOrDefault(x=>x.Name == name);
+                if (family is null)
+                {
+                    family = new Family
+                    {
+                        Name = name!.Trim()
+                    };
+                    Console.WriteLine($"A new family named {name} is added.");
+                }
+                else
+                {
+                    if (ReadYesOrNoUntilAnswered($"An existing family named {name} is found. Rename it"))
+                    {
+                        name = Answer("Name of the family to rename to (leave it blank to NOT rename):");
+                        if (!string.IsNullOrWhiteSpace(name))
+                        {
+                            family.Name = name!.Trim();
+                        }
+                    }
+                }
+                break;
+            }
+        }
+        while (true)
+        {
+            if (!ReadYesOrNoUntilAnswered($"Add or edit a family member"))
+            {
+                break;
+            }
+
+            Console.WriteLine($"Current {family.TaxMembers.Count} family members:");
+            foreach (var ti in config.TaxIndividuals)
+            {
+                if (family.TaxMembers.Contains(ti))
+                {
+                    Console.WriteLine($" * {ti.Name}");
+                }
+                else
+                {
+                    Console.WriteLine($"   {ti.Name}");
+                }
+            }
+            var name = Answer("Name of the member to add/remove:");
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                var member = config.TaxIndividuals.FirstOrDefault(x=>x.Name == name);
+                if(member is not null)
+                {
+                    if (family.TaxMembers.Contains(member))
+                    {
+                        family.TaxMembers.Remove(member);
+                        Console.WriteLine("Member remobed.");
+                    }
+                    else
+                    {
+                        family.TaxMembers.Add(member);
+                        Console.WriteLine("Member added.");
+                    }
+                }
+            }
+        }
+        while (true)
+        {
+            var numDepsStr = Answer("Number of dependencies:");
+            if (int.TryParse(numDepsStr, out var numDeps))
+            {
+                family.DependencyCount = numDeps;
+                break;
+            }
+        }
     }
 }
 
-static string? Answer(string question)
+// End of the script.
+
+static string? Answer(string question, string defaultValue = "")
 {
     Console.WriteLine(question);
     var answer = Console.ReadLine();
