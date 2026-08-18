@@ -7,7 +7,7 @@ namespace NewFinance.Configuration
     {
         public List<TaxIndividual> TaxIndividuals { get; } = [];
 
-        public List<Family> Familie { get; } = [];
+        public List<Family> Families { get; } = [];
         
         public List<Account> Accounts {get;} = [];
 

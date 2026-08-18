@@ -1,5 +1,6 @@
 ﻿using NewFinance.Concrete.Entities;
 using NewFinance.Configuration;
+using NewFinance.Core;
 
 Console.WriteLine("At any point, press Ctrl+C or close the command window to quit.");
 
@@ -76,7 +77,7 @@ while(config is null)
         }
         else
         {
-            if (ReadYesOrNoUntilAnswered("Add another tax individual (Y or N)"))
+            if (ReadYesOrNoUntilAnswered($"Add another or edit an existing tax individual (currently {config.TaxIndividuals.Count})"))
             {
                 addIndividual = true;
             }
@@ -86,29 +87,101 @@ while(config is null)
             break;
         }
 
-        var individual = new TaxIndividual();
+        TaxIndividual? individual = null;
         while (true)
         {
             var name = Answer("Name of the individual:");
-            if (string.IsNullOrWhiteSpace(name))
+            if (!string.IsNullOrWhiteSpace(name))
             {
-                individual.Name = name!.Trim();
+                individual = config.TaxIndividuals.FirstOrDefault(x=>x.Name==name);
+                if (individual is null)
+                {
+                    individual = new TaxIndividual
+                    {
+                        Name = name!.Trim()
+                    };
+                    Console.WriteLine($"A new individual named {name} is added.");
+                }
+                else
+                {
+                     if (ReadYesOrNoUntilAnswered($"An existing individual named {name} is found. Rename it?"))
+                    {
+                        name = Answer("Name of the individual to rename to:");
+                        if (!string.IsNullOrWhiteSpace(name))
+                        {
+                            individual.Name = name!.Trim();
+                        }
+                    }
+                }
                 break;
             }
         }
-
         config.TaxIndividuals.Add(individual);
     }
 
     while (true)
     {
-        
+        bool addFamily = false;
+        if (ReadYesOrNoUntilAnswered($"Add or edit a family (currently {config.Families.Count})?"))
+        {
+            addFamily = true;
+        }
+        if (!addFamily)
+        {
+            break;
+        }
+
+        Family? family = null;
+        while (true)
+        {
+            var name = Answer("Name of the family:");
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                family = config.Families.FirstOrDefault(x=>x.Name == name);
+                if (family is null)
+                {
+                    family = new Family
+                    {
+                        Name = name!.Trim()
+                    };
+                    Console.WriteLine($"A new family named {name} is added.");
+                }
+                else
+                {
+                    if (ReadYesOrNoUntilAnswered($"An existing family named {name} is found. Rename it?"))
+                    {
+                        name = Answer("Name of the family to rename to:");
+                        if (!string.IsNullOrWhiteSpace(name))
+                        {
+                            family.Name = name!.Trim();
+                        }
+                    }
+                }
+                break;
+            }
+        }
+        if (family.TaxMembers.Count > 0)
+        {
+            if (ReadYesOrNoUntilAnswered($""))
+        }
+        while (true)
+        {
+            var numDepsStr = Answer("Number of dependencies:");
+            if (int.TryParse(numDepsStr, out var numDeps))
+            {
+                family.DependencyCount = numDeps;
+                break;
+            }
+        }
     }
 }
 
-static string? Answer(string question)
+// End of the script.
+
+static string? Answer(string question, string defaultValue = "")
 {
     Console.WriteLine(question);
+    Console.Write(defaultValue);
     var answer = Console.ReadLine();
     return answer;
 }
@@ -157,6 +230,6 @@ static bool ReadYesOrNoUntilAnswered(string question)
     bool? answer;
     do
     {
-    } while ((answer = ReadYesOrNo("File already exists. Overwrite")) == null);
+    } while ((answer = ReadYesOrNo(question)) == null);
     return answer!.Value;
 }

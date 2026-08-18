@@ -6,6 +6,6 @@ namespace NewFinance.Concrete.Entities
     {
         public List<TaxIndividual> TaxMembers { get; } = new List<TaxIndividual>();
 
-        public int DependencyCount {get;set;}
+        public int DependencyCount { get; set; }
     }
 }
