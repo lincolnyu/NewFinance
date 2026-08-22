@@ -48,7 +48,8 @@ namespace NewFinance.Concrete.Contracts
                     {
                         foreach(var account in entity.Assets.Concat(entity.Liabilities))
                         {
-                            if (account.Ownership.TryGetValue(entity, out var share))
+                            var share = account.GetShare(entity);
+                            if (share is not null)
                             {
                                 _writer?.WriteLine($" '{account.Name}' balance = {account.Balance * share:N2}");
                                 row.Add(account.Balance * share);

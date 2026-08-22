@@ -6,7 +6,7 @@ namespace NewFinance.Core
 
         public decimal Balance { get; private set; } = initialBalance;
 
-        public Dictionary<Entity, decimal> Ownership { get; } = new Dictionary<Entity, decimal>();
+        public List<(Entity Entity, decimal Share)> Ownership { get; } = [];
 
         public class Transaction(string name = "") : IHasName
         {

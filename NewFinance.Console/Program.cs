@@ -1,4 +1,5 @@
-﻿using NewFinance;
+﻿using System.Security.Principal;
+using NewFinance;
 using NewFinance.Common;
 using NewFinance.Concrete;
 using NewFinance.Concrete.Accounts;
@@ -821,11 +822,12 @@ static void AssignOwnership(Configuration config, Account account)
             continue;
         }
 
-        if (account.Ownership.ContainsKey(entity))
+        var accountEntityIndex = account.GetEntityIndex(entity); 
+        if (accountEntityIndex is not null)
         {
             if (ReadYesOrNoUntilAnswered($"{entity.Name} already owns '{account.Name}'. Remove the ownership"))
             {
-                account.Ownership.Remove(entity);
+                account.Ownership.RemoveAt(accountEntityIndex.Value);
                 entity.Assets.Remove(account);
                 entity.Liabilities.Remove(account);
                 Console.WriteLine("Ownership removed.");
@@ -853,7 +855,7 @@ static void RemoveAccount(Configuration config, Account account)
         config.ExistingContracts.Remove(contract);
         config.OptionalContracts.RemoveAll(x => x.Item1 == contract);
     }
-    foreach (var owner in account.Ownership.Keys.ToList())
+    foreach (var owner in account.Ownership.Select(x=>x.Entity))
     {
         owner.Assets.Remove(account);
         owner.Liabilities.Remove(account);
@@ -1238,7 +1240,7 @@ static void PrintConfigurationSummary(Configuration config)
     {
         var owners = account.Ownership.Count == 0
             ? "no owner"
-            : string.Join(", ", account.Ownership.Select(x => $"{x.Key.Name} {x.Value:P2}"));
+            : string.Join(", ", account.Ownership.Select(x => $"{x.Entity.Name} {x.Share:P2}"));
         Console.WriteLine($" {DescribeAccount(account)}: {owners}");
     }
 

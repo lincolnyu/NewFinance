@@ -37,16 +37,36 @@ namespace NewFinance.Core
             return source;
         }
 
+        public static decimal? GetShare(this Account account, Entity entity)
+        {
+            var ownership = account.Ownership.FirstOrDefault(x=>x.Entity == entity);
+            if (ownership.Entity is not null)
+            {
+                return ownership.Share;
+            }
+            return null;
+        }
+
+        public static int? GetEntityIndex(this Account account, Entity entity)
+        {
+            var item = account.Ownership.Select((x,i)=>(x,i)).FirstOrDefault(t=> t.x.Entity == entity);
+            if (item.x != default)
+            {
+                return item.i;
+            }
+            return null;
+        }
+
         public static void AddAsset(this Entity entity, Account account, decimal ownershipFraction)
         {
             entity.Assets.Add(account);
-            account.Ownership.Add(entity, ownershipFraction);
+            account.Ownership.Add((entity, ownershipFraction));
         }
 
         public static void AddLiability(this Entity entity, Account account, decimal ownershipFraction)
         {
             entity.Liabilities.Add(account);
-            account.Ownership.Add(entity, ownershipFraction);
+            account.Ownership.Add((entity, ownershipFraction));
         }
 
         public static DateTime NextAnniversaryCrossing(this DateTime start, int month, int day)

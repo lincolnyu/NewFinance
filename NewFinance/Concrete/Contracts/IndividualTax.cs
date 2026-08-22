@@ -37,7 +37,8 @@ namespace NewFinance.Concrete.Contracts
                     var propertySchedule = property.Schedule!;
 
                     // This is also to clear trackers.
-                    (var _, var share) = property.Ownership.TryGetValue(TaxPayer, out var s) ? (TaxPayer, s) : (null, 0m);
+
+                    var share = property.GetShare(TaxPayer)?? 0m;
 
                     var loan = TaxPayer.Liabilities.OfType<Loan>().FirstOrDefault(loan => loan.Contract!.Property == property);
                     
