@@ -9,6 +9,13 @@ using NewFinance.Core;
 
 Console.WriteLine("At any point, press Ctrl+C or close the command window to quit.");
 
+var tempConfigFile = Path.Combine(
+    Path.GetTempPath(),
+    $"NewFinance-tempfile-{Guid.NewGuid():N}.json");
+
+string? targetConfigFilePath = null;
+string? workingConfigFilePath = null;
+
 Configuration? config = null;
 while(config is null)
 {
@@ -16,48 +23,53 @@ while(config is null)
     {
         case 0: // New
             {
-                var fileLocation = Answer("File location:");
-                if (string.IsNullOrWhiteSpace(fileLocation))
-                {
-                    fileLocation = null;
-                }
-                else if (File.Exists(fileLocation))
-                {
-                    bool overwrite = ReadYesOrNoUntilAnswered("File already exists. Overwrite");
-                    if (!overwrite)
-                    {
-                        fileLocation = null;
-                    }
-                }
-                else if (Directory.Exists(fileLocation))
-                {
-                    var fileName = Answer("File name:");
-                    fileLocation = Path.Combine(fileLocation, fileName!);
-                    if (Path.GetExtension(fileLocation) == "")
-                    {
-                        fileLocation += ".json";
-                    }
-                }
-                else
-                {
-                    var cwd = Directory.GetCurrentDirectory();
-                    fileLocation = Path.Combine(cwd, fileLocation);
-                    var containingFolder = Path.GetDirectoryName(fileLocation);
-                    if (!Directory.Exists(containingFolder))
-                    {
-                        Console.WriteLine($"Folder {containingFolder} not found");
-                        fileLocation = null;
-                    }
-                }
-                if (fileLocation is not null)
-                {
-                    config = new Configuration();
-                    // TODO json serialisation
-                }
-                else
-                {
-                    continue;
-                }
+                // var fileLocation = Answer("File location:");
+                // if (string.IsNullOrWhiteSpace(fileLocation))
+                // {
+                //     fileLocation = null;
+                // }
+                // else if (File.Exists(fileLocation))
+                // {
+                //     bool overwrite = ReadYesOrNoUntilAnswered("File already exists. Overwrite");
+                //     if (!overwrite)
+                //     {
+                //         fileLocation = null;
+                //     }
+                // }
+                // else if (Directory.Exists(fileLocation))
+                // {
+                //     var fileName = Answer("File name:");
+                //     fileLocation = Path.Combine(fileLocation, fileName!);
+                //     if (Path.GetExtension(fileLocation) == "")
+                //     {
+                //         fileLocation += ".json";
+                //     }
+                // }
+                // else
+                // {
+                //     var cwd = Directory.GetCurrentDirectory();
+                //     fileLocation = Path.Combine(cwd, fileLocation);
+                //     var containingFolder = Path.GetDirectoryName(fileLocation);
+                //     if (!Directory.Exists(containingFolder))
+                //     {
+                //         Console.WriteLine($"Folder {containingFolder} not found");
+                //         fileLocation = null;
+                //     }
+                // }
+                // if (fileLocation is not null)
+                // {
+                //     config = new Configuration();
+                //     // TODO json serialisation
+                // }
+                // else
+                // {
+                //     continue;
+                // }
+                config = new Configuration();
+                // Working file that is updated on the fly.
+                // A later script (or an explicit “Save” action) can copy this
+                // to the real destination (fileLocation).
+                workingConfigFilePath = tempConfigFile;
                 break;
             }
         case 1:
@@ -65,7 +77,14 @@ while(config is null)
                 var fileLocation = Answer("File location:");
                 if (File.Exists(fileLocation))
                 {
-                    // TODO json deserialisation config from fileLocation
+                    targetConfigFilePath = fileLocation;
+                    File.Copy(fileLocation, tempConfigFile, true);
+                    config = SerializationHelper.Deserialize(tempConfigFile);
+                    if (config is null)
+                    {
+                        Console.WriteLine($"Error opening config file {fileLocation}");
+                    }
+                    workingConfigFilePath = tempConfigFile;
                 }
                 else
                 {
@@ -75,7 +94,7 @@ while(config is null)
             }
     }
 
-    if (config is null)
+    if (config is null || workingConfigFilePath is null)
     {
         // Opening an existing config is not implemented yet, so there is nothing to populate.
         continue;
@@ -138,6 +157,8 @@ while(config is null)
             }
         }
     }
+
+    config.SaveToFile(workingConfigFilePath);
 
     while (true)
     {
@@ -243,6 +264,8 @@ while(config is null)
         }
     }
 
+    config.SaveToFile(workingConfigFilePath);
+
     while (true)
     {
         Console.WriteLine($"Current {config.Accounts.Count} accounts:");
@@ -316,6 +339,8 @@ while(config is null)
         }
     }
 
+    config.SaveToFile(workingConfigFilePath);
+
     while (true)
     {
         Console.WriteLine($"Current {config.ExistingContracts.Count} existing contracts:");
@@ -341,6 +366,8 @@ while(config is null)
             Console.WriteLine($"Contract '{newContract.Name}' is added.");
         }
     }
+
+    config.SaveToFile(workingConfigFilePath);
 
     while (true)
     {
@@ -390,6 +417,8 @@ while(config is null)
         }
     }
 
+    config.SaveToFile(workingConfigFilePath);
+
     // The tax assessments read the trackers the contracts above populate, so they are set up last and
     // therefore also end up last in ExistingContracts, which is the order the executor relies on.
     foreach (var individual in config.TaxIndividuals)
@@ -413,7 +442,17 @@ while(config is null)
         Console.WriteLine($"'{tax.Name}' is added.");
     }
 
+    config.SaveToFile(workingConfigFilePath);
+
     PrintConfigurationSummary(config);
+
+    while (targetConfigFilePath is null)
+    {
+        // TODO prompt to get the file to save as
+    }
+
+    File.Copy(workingConfigFilePath, targetConfigFilePath, true);
+    Console.WriteLine($"Config successfully saved to {targetConfigFilePath}");
 }
 
 // End of the script.
