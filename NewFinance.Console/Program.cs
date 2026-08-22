@@ -36,7 +36,12 @@ while(config is null)
                 {
                     targetConfigFilePath = fileLocation;
                     File.Copy(fileLocation, tempConfigFile, true);
-                    config = SerializationHelper.Deserialize(tempConfigFile);
+                    string json;
+                    {
+                        using var sr = new StreamReader(tempConfigFile);
+                        json = sr.ReadToEnd(); 
+                    }
+                    config = SerializationHelper.Deserialize(json);
                     if (config is null)
                     {
                         Console.WriteLine($"Error opening config file {fileLocation}");

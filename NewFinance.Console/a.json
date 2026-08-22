@@ -1,0 +1,108 @@
+{
+  "$id": "1",
+  "TaxIndividuals": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "TaxableContracts": {
+          "$id": "4",
+          "$values": []
+        },
+        "Family": {
+          "$id": "5",
+          "TaxMembers": {
+            "$id": "6",
+            "$values": [
+              {
+                "$ref": "3"
+              },
+              {
+                "$id": "7",
+                "TaxableContracts": {
+                  "$id": "8",
+                  "$values": []
+                },
+                "Family": {
+                  "$ref": "5"
+                },
+                "Name": "cibo",
+                "Assets": {
+                  "$id": "9",
+                  "$values": [
+                    {
+                      "$id": "10",
+                      "Name": "anz",
+                      "Balance": 0,
+                      "Ownership": {
+                        "$id": "11",
+                        "$values": [
+                          {},
+                          {}
+                        ]
+                      }
+                    }
+                  ]
+                },
+                "Liabilities": {
+                  "$id": "12",
+                  "$values": []
+                }
+              }
+            ]
+          },
+          "DependencyCount": 1,
+          "Name": "lc",
+          "Assets": {
+            "$id": "13",
+            "$values": []
+          },
+          "Liabilities": {
+            "$id": "14",
+            "$values": []
+          }
+        },
+        "Name": "linc",
+        "Assets": {
+          "$id": "15",
+          "$values": [
+            {
+              "$ref": "10"
+            }
+          ]
+        },
+        "Liabilities": {
+          "$id": "16",
+          "$values": []
+        }
+      },
+      {
+        "$ref": "7"
+      }
+    ]
+  },
+  "Families": {
+    "$id": "17",
+    "$values": [
+      {
+        "$ref": "5"
+      }
+    ]
+  },
+  "Accounts": {
+    "$id": "18",
+    "$values": [
+      {
+        "$ref": "10"
+      }
+    ]
+  },
+  "ExistingContracts": {
+    "$id": "19",
+    "$values": []
+  },
+  "OptionalContracts": {
+    "$id": "20",
+    "$values": []
+  }
+}
