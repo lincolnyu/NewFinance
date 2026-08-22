@@ -2,7 +2,7 @@ using NewFinance.Core;
 
 namespace NewFinance.Common
 {
-    class ContractLoader
+    public class ContractLoader
     {
         HashSet<Contract> _addedContracts = new HashSet<Contract>();
         
