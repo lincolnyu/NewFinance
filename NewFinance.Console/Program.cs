@@ -22,56 +22,12 @@ while(config is null)
     switch (ReadOptionsUntilAnswered("I would like to ...", ('a', "Create a new config."), ('b', "Open an existing config.")))
     {
         case 0: // New
-            {
-                // var fileLocation = Answer("File location:");
-                // if (string.IsNullOrWhiteSpace(fileLocation))
-                // {
-                //     fileLocation = null;
-                // }
-                // else if (File.Exists(fileLocation))
-                // {
-                //     bool overwrite = ReadYesOrNoUntilAnswered("File already exists. Overwrite");
-                //     if (!overwrite)
-                //     {
-                //         fileLocation = null;
-                //     }
-                // }
-                // else if (Directory.Exists(fileLocation))
-                // {
-                //     var fileName = Answer("File name:");
-                //     fileLocation = Path.Combine(fileLocation, fileName!);
-                //     if (Path.GetExtension(fileLocation) == "")
-                //     {
-                //         fileLocation += ".json";
-                //     }
-                // }
-                // else
-                // {
-                //     var cwd = Directory.GetCurrentDirectory();
-                //     fileLocation = Path.Combine(cwd, fileLocation);
-                //     var containingFolder = Path.GetDirectoryName(fileLocation);
-                //     if (!Directory.Exists(containingFolder))
-                //     {
-                //         Console.WriteLine($"Folder {containingFolder} not found");
-                //         fileLocation = null;
-                //     }
-                // }
-                // if (fileLocation is not null)
-                // {
-                //     config = new Configuration();
-                //     // TODO json serialisation
-                // }
-                // else
-                // {
-                //     continue;
-                // }
-                config = new Configuration();
-                // Working file that is updated on the fly.
-                // A later script (or an explicit “Save” action) can copy this
-                // to the real destination (fileLocation).
-                workingConfigFilePath = tempConfigFile;
-                break;
-            }
+            config = new Configuration();
+            // Working file that is updated on the fly.
+            // A later script (or an explicit “Save” action) can copy this
+            // to the real destination (fileLocation).
+            workingConfigFilePath = tempConfigFile;
+            break;
         case 1:
             {
                 var fileLocation = Answer("File location:");
@@ -448,7 +404,43 @@ while(config is null)
 
     while (targetConfigFilePath is null)
     {
-        // TODO prompt to get the file to save as
+        var fileLocation = Answer("File location:");
+        if (string.IsNullOrWhiteSpace(fileLocation))
+        {
+            fileLocation = null;
+        }
+        else if (File.Exists(fileLocation))
+        {
+            bool overwrite = ReadYesOrNoUntilAnswered("File already exists. Overwrite");
+            if (!overwrite)
+            {
+                fileLocation = null;
+            }
+        }
+        else if (Directory.Exists(fileLocation))
+        {
+            var fileName = Answer("File name:");
+            fileLocation = Path.Combine(fileLocation, fileName!);
+            if (Path.GetExtension(fileLocation) == "")
+            {
+                fileLocation += ".json";
+            }
+        }
+        else
+        {
+            var cwd = Directory.GetCurrentDirectory();
+            fileLocation = Path.Combine(cwd, fileLocation);
+            var containingFolder = Path.GetDirectoryName(fileLocation);
+            if (!Directory.Exists(containingFolder))
+            {
+                Console.WriteLine($"Folder {containingFolder} not found");
+                fileLocation = null;
+            }
+        }
+        if (fileLocation is not null)
+        {
+            targetConfigFilePath = fileLocation;
+        }
     }
 
     File.Copy(workingConfigFilePath, targetConfigFilePath, true);
