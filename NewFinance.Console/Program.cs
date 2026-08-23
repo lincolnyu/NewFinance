@@ -1,5 +1,4 @@
-﻿using System.Security.Principal;
-using NewFinance;
+﻿using NewFinance;
 using NewFinance.Common;
 using NewFinance.Concrete;
 using NewFinance.Concrete.Accounts;
@@ -36,12 +35,7 @@ while(config is null)
                 {
                     targetConfigFilePath = fileLocation;
                     File.Copy(fileLocation, tempConfigFile, true);
-                    string json;
-                    {
-                        using var sr = new StreamReader(tempConfigFile);
-                        json = sr.ReadToEnd(); 
-                    }
-                    config = SerializationHelper.Deserialize(json);
+                    config = SerializationHelper.LoadFromFile(tempConfigFile);
                     if (config is null)
                     {
                         Console.WriteLine($"Error opening config file {fileLocation}");

@@ -1,0 +1,52 @@
+{
+  "$id": "1",
+  "Families": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DependencyCount": 1,
+        "Name": "lc"
+      }
+    ]
+  },
+  "Accounts": {
+    "$id": "4",
+    "$values": [
+      {
+        "$id": "5",
+        "Name": "anz",
+        "Balance": 10000
+      }
+    ]
+  },
+  "TaxIndividuals": {
+    "$id": "6",
+    "$values": [
+      {
+        "$id": "7",
+        "TaxableContracts": {
+          "$id": "8",
+          "$values": []
+        },
+        "Name": "linc"
+      },
+      {
+        "$id": "9",
+        "TaxableContracts": {
+          "$id": "10",
+          "$values": []
+        },
+        "Name": "cibo"
+      }
+    ]
+  },
+  "ExistingContracts": {
+    "$id": "11",
+    "$values": []
+  },
+  "OptionalContracts": {
+    "$id": "12",
+    "$values": []
+  }
+}

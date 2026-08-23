@@ -33,7 +33,7 @@
                     {
                       "$id": "10",
                       "Name": "anz",
-                      "Balance": 0,
+                      "Balance": 300,
                       "Ownership": {
                         "$id": "11",
                         "$values": [
