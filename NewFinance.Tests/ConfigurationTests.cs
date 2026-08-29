@@ -28,6 +28,7 @@ public class ConfigurationTests
 
         testConfig.SaveToFile("test.json");
         var loadedConfig = SerializationHelper.LoadFromFile("test.json");
+        File.Delete("test.json");
 
         Assert.NotNull(loadedConfig);
         Assert.NotNull(loadedConfig.Families);
@@ -43,6 +44,13 @@ public class ConfigurationTests
 
         Assert.Equal("Person1", loadedConfig.TaxIndividuals[0].Name);
         Assert.Equal("Person2", loadedConfig.TaxIndividuals[1].Name);
+
+        Assert.Equal(2, loadedConfig.Accounts[0].Ownership.Count);
+        Assert.Same(loadedConfig.TaxIndividuals[0], loadedConfig.Accounts[0].Ownership[0].Entity);
+        Assert.Equal(0.5m, loadedConfig.Accounts[0].Ownership[0].Share);
+        Assert.Equal(10000m, loadedConfig.Accounts[0].Balance);
+        Assert.Same(loadedConfig.TaxIndividuals[1], loadedConfig.Families[0].TaxMembers[1]);
+
         return;
     }
 }

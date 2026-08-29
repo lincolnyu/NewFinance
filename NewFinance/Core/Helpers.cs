@@ -40,7 +40,7 @@ namespace NewFinance.Core
         public static decimal? GetShare(this Account account, Entity entity)
         {
             var ownership = account.Ownership.FirstOrDefault(x=>x.Entity == entity);
-            if (ownership.Entity is not null)
+            if (ownership?.Entity is not null)
             {
                 return ownership.Share;
             }
