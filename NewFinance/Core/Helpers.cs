@@ -69,6 +69,22 @@ namespace NewFinance.Core
             account.Ownership.Add(new OwnershipShare{ Entity = entity, Share = ownershipFraction});
         }
 
+        public static void AddAsset(this OwnershipShare ownershipShare, Account account)
+        {
+            var entity = ownershipShare.Entity;
+            entity.Assets.Add(account);
+            ownershipShare.Entity = entity;
+            account.Ownership.Add(ownershipShare);
+        }
+
+        public static void AddLiability(this OwnershipShare ownershipShare, Account account)
+        {
+            var entity = ownershipShare.Entity;
+            entity.Liabilities.Add(account);
+            ownershipShare.Entity = entity;
+            account.Ownership.Add(ownershipShare);
+        }
+
         public static DateTime NextAnniversaryCrossing(this DateTime start, int month, int day)
         {
             DateTime candidate = new DateTime(start.Year, month, day);

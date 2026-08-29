@@ -20,7 +20,7 @@ string? workingConfigFilePath = null;
 Configuration? config = null;
 while(config is null)
 {
-    switch (ReadOptionsUntilAnswered("I would like to ...", ('a', "Create a new config."), ('b', "Open an existing config.")))
+    switch (ReadOptionsUntilAnswered("I would like to ...", ('c', "Create a new config."), ('o', "Open an existing config.")))
     {
         case 0: // New
             config = new Configuration();
@@ -135,88 +135,85 @@ while(config is null)
         }
 
         Family? family = null;
-        while (true)
+        var name = Answer("Name of the family (empty name to cancel):");
+        if (!string.IsNullOrWhiteSpace(name))
         {
-            var name = Answer("Name of the family:");
-            if (!string.IsNullOrWhiteSpace(name))
+            name = name.Trim();
+            family = config.Families.FirstOrDefault(x=>x.Name == name);
+            if (family is null)
             {
-                name = name.Trim();
-                family = config.Families.FirstOrDefault(x=>x.Name == name);
-                if (family is null)
+                family = new Family
                 {
-                    family = new Family
-                    {
-                        Name = name
-                    };
-                    // The family used to be dropped on the floor here so nothing ever reached config.Families.
-                    config.Families.Add(family);
-                    Console.WriteLine($"A new family named {name} is added.");
-                }
-                else
+                    Name = name
+                };
+                // The family used to be dropped on the floor here so nothing ever reached config.Families.
+                config.Families.Add(family);
+                Console.WriteLine($"A new family named {name} is added.");
+            }
+            else
+            {
+                if (ReadYesOrNoUntilAnswered($"An existing family named {name} is found. Rename it"))
                 {
-                    if (ReadYesOrNoUntilAnswered($"An existing family named {name} is found. Rename it"))
+                    name = Answer("Name of the family to rename to (leave it blank to NOT rename):");
+                    if (!string.IsNullOrWhiteSpace(name))
                     {
-                        name = Answer("Name of the family to rename to (leave it blank to NOT rename):");
-                        if (!string.IsNullOrWhiteSpace(name))
-                        {
-                            family.Name = name.Trim();
-                        }
+                        family.Name = name.Trim();
                     }
                 }
-                break;
             }
-        }
-        while (true)
-        {
-            Console.WriteLine($"Current {family.TaxMembers.Count} family members:");
-            foreach (var ti in config.TaxIndividuals)
+            
+            while (true)
             {
-                if (family.TaxMembers.Contains(ti))
+                Console.WriteLine($"Current {family.TaxMembers.Count} family members:");
+                foreach (var ti in config.TaxIndividuals)
                 {
-                    Console.WriteLine($" * {ti.Name}");
-                }
-                else
-                {
-                    Console.WriteLine($"   {ti.Name}");
-                }
-            }
-            if (!ReadYesOrNoUntilAnswered($"Add or remove a family member"))
-            {
-                break;
-            }
-
-            var name = Answer("Name of the member to add/remove:");
-            if (!string.IsNullOrWhiteSpace(name))
-            {
-                var member = config.TaxIndividuals.FirstOrDefault(x=>x.Name == name.Trim());
-                if(member is not null)
-                {
-                    if (family.TaxMembers.Contains(member))
+                    if (family.TaxMembers.Contains(ti))
                     {
-                        family.TaxMembers.Remove(member);
-                        member.Family = null;
-                        Console.WriteLine("Member removed.");
+                        Console.WriteLine($" * {ti.Name}");
                     }
                     else
                     {
-                        // AddTaxMember also back-links the individual to the family, which the tax rules rely on.
-                        family.AddTaxMember(member);
-                        Console.WriteLine("Member added.");
+                        Console.WriteLine($"   {ti.Name}");
                     }
                 }
-                else
+                if (!ReadYesOrNoUntilAnswered($"Add or remove a family member"))
                 {
-                    Console.WriteLine($"No tax individual named {name.Trim()} is found.");
+                    break;
+                }
+
+                var memberName = Answer("Name of the member to add/remove:");
+                if (!string.IsNullOrWhiteSpace(memberName))
+                {
+                    var member = config.TaxIndividuals.FirstOrDefault(x=>x.Name == memberName.Trim());
+                    if(member is not null)
+                    {
+                        if (family.TaxMembers.Contains(member))
+                        {
+                            family.TaxMembers.Remove(member);
+                            member.Family = null;
+                            Console.WriteLine("Member removed.");
+                        }
+                        else
+                        {
+                            // AddTaxMember also back-links the individual to the family, which the tax rules rely on.
+                            family.AddTaxMember(member);
+                            Console.WriteLine("Member added.");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"No tax individual named {memberName.Trim()} is found.");
+                    }
                 }
             }
-        }
-        while (true)
-        {
-            var numDepsStr = Answer("Number of dependencies:", family.DependencyCount.ToString());
-            if (int.TryParse(numDepsStr, out var numDeps) && numDeps >= 0)
+            while (true)
             {
-                family.DependencyCount = numDeps;
-                break;
+                var numDepsStr = Answer("Number of dependencies:", family.DependencyCount.ToString());
+                if (int.TryParse(numDepsStr, out var numDeps) && numDeps >= 0)
+                {
+                    family.DependencyCount = numDeps;
+                    break;
+                }
             }
         }
     }
@@ -807,9 +804,9 @@ static void AssignOwnership(Configuration config, Account account)
     while (true)
     {
         Console.WriteLine($"Current {account.Ownership.Count} owners of '{account.Name}':");
-        foreach (var (owner, share) in account.Ownership)
+        foreach (var ownership  in account.Ownership)
         {
-            Console.WriteLine($" {owner.Name}: {share:P2}");
+            Console.WriteLine($" {ownership.Entity.Name}: {ownership.Share:P2}");
         }
         if (!ReadYesOrNoUntilAnswered($"Add or remove an owner of '{account.Name}'"))
         {
@@ -822,27 +819,56 @@ static void AssignOwnership(Configuration config, Account account)
             continue;
         }
 
-        var accountEntityIndex = account.GetEntityIndex(entity); 
-        if (accountEntityIndex is not null)
+        List<Entity> entitiesToEdit = [];
+        if (entity is Family family)
         {
-            if (ReadYesOrNoUntilAnswered($"{entity.Name} already owns '{account.Name}'. Remove the ownership"))
+            foreach (var member in family.TaxMembers)
             {
-                account.Ownership.RemoveAt(accountEntityIndex.Value);
-                entity.Assets.Remove(account);
-                entity.Liabilities.Remove(account);
-                Console.WriteLine("Ownership removed.");
+                entitiesToEdit.Add(member);
             }
-            continue;
-        }
-
-        var ownershipShare = ReadRate("Ownership share (e.g. 50% or 0.5):", 1m);
-        if (isLiability)
-        {
-            entity.AddLiability(account, ownershipShare);
         }
         else
         {
-            entity.AddAsset(account, ownershipShare);
+            entitiesToEdit.Add(entity);
+        }
+        
+        var totalRemaining = 1m - account.Ownership.Sum(x=>x.Share);
+        var remainingEntitiesToEdit = entitiesToEdit.Count;
+        foreach (var e in entitiesToEdit)
+        {
+            var accountEntityIndex = account.GetEntityIndex(e);
+            OwnershipShare ownership;
+            if (accountEntityIndex is not null)
+            {
+                ownership = account.Ownership[accountEntityIndex.Value];
+                Console.WriteLine($"{e.Name} already owns '{account.Name}'. Set its share to 0 to remove ownership.");
+            }
+            else
+            {
+                ownership = new OwnershipShare {Entity = e} ;
+                if (isLiability)
+                {
+                    ownership.AddLiability(account);
+                }
+                else
+                {
+                    ownership.AddAsset(account);
+                }            
+            }
+
+            var available = accountEntityIndex is not null? (totalRemaining + ownership.Share) : totalRemaining;
+            var dist = available / remainingEntitiesToEdit;
+            var ownershipShare = ReadRate($"{e.Name}'s Ownership share change to ({dist*100}%):", dist);
+            if (ownershipShare == 0)
+            {
+                account.Ownership.RemoveAt(accountEntityIndex??account.Ownership.Count-1);
+            }
+            else
+            {
+                ownership.Share = ownershipShare;
+            }
+            totalRemaining = available - ownershipShare;
+            remainingEntitiesToEdit--;
         }
     }
 }
