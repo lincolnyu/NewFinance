@@ -58,7 +58,20 @@ namespace NewFinance.Configuration
                 return null;
             }
 
-            return JsonSerializer.Deserialize<Configuration>(json, options ?? DefaultOptions);
+            var config = JsonSerializer.Deserialize<Configuration>(json, options ?? DefaultOptions);
+            if (config is null)
+            {
+                return null;
+            }
+
+            foreach (var family in config.Families)
+            {
+                foreach (var member in family.TaxMembers)
+                {
+                    member.Family = family;
+                }
+            }
+            return config;
         }
 
         /// <summary>

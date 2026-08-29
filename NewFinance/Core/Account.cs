@@ -1,12 +1,23 @@
+using System.Text.Json.Serialization;
+
 namespace NewFinance.Core
 {
-    public class Account(string name, decimal initialBalance = 0m) : IHasName, IHasBalance
+    public class Account : IHasName, IHasBalance
     {
-        public string Name { get; } = name;
+        [JsonConstructor]
+        public Account() { }
 
-        public decimal Balance { get; private set; } = initialBalance;
+        public Account(string name, decimal balance = 0m)
+        {
+            Name = name;
+            Balance = balance;
+        }
 
-        public List<(Entity Entity, decimal Share)> Ownership { get; } = [];
+        public string Name { get; set; }
+
+        public decimal Balance { get; set; }
+
+        public List<OwnershipShare> Ownership { get; set; } = [];
 
         public class Transaction(string name = "") : IHasName
         {

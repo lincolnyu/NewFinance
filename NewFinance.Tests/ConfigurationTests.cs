@@ -17,8 +17,8 @@ public class ConfigurationTests
         family.AddTaxMember(per2);
 
         var account = new Account("bank", 10000);
-        account.Ownership.Add((per1, 0.5m));
-        account.Ownership.Add((per2, 0.5m));
+        account.Ownership.Add(new OwnershipShare{Entity = per1, Share = 0.5m});
+        account.Ownership.Add(new OwnershipShare{Entity = per2, Share = 0.5m});
 
         var testConfig = new Configuration();
         testConfig.Families.Add(family);
@@ -27,15 +27,22 @@ public class ConfigurationTests
         testConfig.Accounts.Add(account);
 
         testConfig.SaveToFile("test.json");
-        var testLoadingConfig = SerializationHelper.LoadFromFile("test.json");
+        var loadedConfig = SerializationHelper.LoadFromFile("test.json");
 
-        Assert.NotNull(testLoadingConfig);
-        Assert.NotNull(testLoadingConfig.Families);
-        Assert.NotNull(testLoadingConfig.Accounts);
-        Assert.Equal(2, testLoadingConfig.TaxIndividuals.Count);
-        Assert.Single(testLoadingConfig.Families);
-        Assert.Single(testLoadingConfig.Accounts);
+        Assert.NotNull(loadedConfig);
+        Assert.NotNull(loadedConfig.Families);
+        Assert.NotNull(loadedConfig.Accounts);
 
+        Assert.Single(loadedConfig.Families);
+        Assert.Single(loadedConfig.Accounts);
+        Assert.Equal(2, loadedConfig.TaxIndividuals.Count);
+        Assert.Equal(2, loadedConfig.Families[0].TaxMembers.Count);
+
+        Assert.Same(loadedConfig.TaxIndividuals[0], loadedConfig.Families[0].TaxMembers[0]);
+        Assert.Same(loadedConfig.Families[0], loadedConfig.TaxIndividuals[0].Family);
+
+        Assert.Equal("Person1", loadedConfig.TaxIndividuals[0].Name);
+        Assert.Equal("Person2", loadedConfig.TaxIndividuals[1].Name);
         return;
     }
 }

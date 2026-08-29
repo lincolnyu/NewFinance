@@ -60,13 +60,13 @@ namespace NewFinance.Core
         public static void AddAsset(this Entity entity, Account account, decimal ownershipFraction)
         {
             entity.Assets.Add(account);
-            account.Ownership.Add((entity, ownershipFraction));
+            account.Ownership.Add(new OwnershipShare{Entity = entity, Share = ownershipFraction});
         }
 
         public static void AddLiability(this Entity entity, Account account, decimal ownershipFraction)
         {
             entity.Liabilities.Add(account);
-            account.Ownership.Add((entity, ownershipFraction));
+            account.Ownership.Add(new OwnershipShare{ Entity = entity, Share = ownershipFraction});
         }
 
         public static DateTime NextAnniversaryCrossing(this DateTime start, int month, int day)

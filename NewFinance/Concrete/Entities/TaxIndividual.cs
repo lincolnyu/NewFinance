@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using NewFinance.Concrete.Contracts;
 using NewFinance.Core;
 
@@ -16,6 +17,7 @@ namespace NewFinance.Concrete.Entities
         /// </summary>
         public List<Contract> TaxableContracts { get; } = new List<Contract>();
 
+        [JsonIgnore]
         public Family? Family { get; set; }
     }
 }
