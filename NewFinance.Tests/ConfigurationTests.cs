@@ -29,9 +29,12 @@ public class ConfigurationTests
         testConfig.SaveToFile("test.json");
         var testLoadingConfig = SerializationHelper.LoadFromFile("test.json");
 
+        Assert.NotNull(testLoadingConfig);
+        Assert.NotNull(testLoadingConfig.Families);
+        Assert.NotNull(testLoadingConfig.Accounts);
         Assert.Equal(2, testLoadingConfig.TaxIndividuals.Count);
-        Assert.Equal(1, testLoadingConfig.Families.Count);
-        Assert.Equal(1, testLoadingConfig.Accounts.Count);
+        Assert.Single(testLoadingConfig.Families);
+        Assert.Single(testLoadingConfig.Accounts);
 
         return;
     }

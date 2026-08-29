@@ -30,7 +30,7 @@ namespace NewFinance.Configuration
                 PropertyNameCaseInsensitive = true,
                 // Preserve object identity across the graph (Ownership, Family <-> TaxIndividual, etc.)
                 ReferenceHandler = ReferenceHandler.Preserve,
-                PreferredObjectCreationHandling = JsonObjectCreationHandling.Populate, // claimed to be necessary
+                //PreferredObjectCreationHandling = JsonObjectCreationHandling.Populate, // claimed to be necessary
                 // Prefer leaving unknown members alone for forward compatibility
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
                 // Allow reading numbers as strings and vice-versa where useful for balances
