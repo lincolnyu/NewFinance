@@ -1,168 +1,210 @@
+using System.Diagnostics;
 using NewFinance.Common;
 using NewFinance.Concrete.Accounts;
 using NewFinance.Core;
 
-namespace NewFinance.Concrete.Contracts
+namespace NewFinance.Concrete.Contracts;
+
+public class LoanContract : AccountBindingContract
 {
-    public class LoanContract : AccountBindingContract
+    // Australian lenders (e.g. ANZ) calculate daily interest as annual rate / 365.
+    private const decimal InterestDaysPerYear = 365m;
+
+    private decimal _accumulatedInterest;
+
+    // Number of repayments charged so far. Charge dates are anchored to the settlement date to avoid month-end drift.
+    private int _chargeCount;
+
+    private decimal? _monthlyPayment;
+    private decimal _monthlyPaymentRate;
+
+    private DateTime? _nextChargeTime;
+
+    public LoanContract(Loan loanAccount, Property? property, decimal? deposit, DateTime? settlementTime,
+        decimal loanAmount)
+        : base(GetStartTime(property, deposit, settlementTime), loanAccount,
+            string.IsNullOrEmpty(loanAccount.Name)
+                ? property is null ? "Loan" : $"Loan for {property?.Name}"
+                : loanAccount.Name)
     {
-        public ITrackerKey? PaidInterestTrackerKey { get; set; }
+        Deposit = deposit;
+        SettlementTime = GetSettlementTime(property, settlementTime);
+        Property = property;
+        LoanAmount = loanAmount;
+        PurchaseAdditionalCost = property?.PurchaseAdditionalCost ?? 0;
+        Debug.Assert((deposit is not null && SettlementTime is not null &&
+                      Property!.Schedule!.PurchaseTime <= SettlementTime) || deposit is null);
+    }
 
-        public ITrackerKey? PaidPrincipalTrackerKey { get; set; }
+    public ITrackerKey? PaidInterestTrackerKey { get; set; }
 
-        public Property? Property { get; private set; }
+    public ITrackerKey? PaidPrincipalTrackerKey { get; set; }
 
-        public required Account CashAccount { get; set; }
+    public Property? Property { get; }
 
-        public decimal? Deposit {get;}  // Paid at purchase time.
+    public required Account CashAccount { get; set; }
 
-        public DateTime? SettlementTime {get;}
+    public decimal? Deposit { get; } // Paid at purchase time.
 
-        public decimal LoanAmount { get; set; }
+    public DateTime? SettlementTime { get; }
 
-        public decimal PurchaseAdditionalCost{ get; set; }
+    public decimal LoanAmount { get; set; }
 
-        public decimal OffsetRatio { get; set; }
+    public decimal PurchaseAdditionalCost { get; set; }
 
-        public decimal? LoanTermYears { get; set; }
+    public decimal OffsetRatio { get; set; }
 
-        public decimal AnnualInterestRate { get; set; }   // e.g. 0.05 for 5%
+    public decimal? LoanTermYears { get; set; }
 
-        public Action<LoanContract, ContractExecutor, decimal>? OnSettlement { get; set; }
+    public decimal AnnualInterestRate { get; set; } // e.g. 0.05 for 5%
 
-        public LoanContract(Loan loanAccount, Property? property, decimal? deposit, DateTime? settlementTime, decimal loanAmount) 
-            : base(GetStartTime(property, deposit, settlementTime), loanAccount, 
-            string.IsNullOrEmpty(loanAccount.Name) ? (property is null? "Loan" : $"Loan for {property?.Name}")  : loanAccount.Name)
+    public Action<LoanContract, ContractExecutor, decimal>? OnSettlement { get; set; }
+
+    // Interest accrues daily on the daily balance (as lenders do) and is charged on the next charge time.
+    private DateTime NextCalculationTime(DateTime current)
+    {
+        var nextCalculationTime = current.AddDays(1);
+        return !_nextChargeTime.HasValue || nextCalculationTime < _nextChargeTime.Value
+            ? nextCalculationTime
+            : _nextChargeTime.Value;
+    }
+
+    private static DateTime GetSettlementTime(Property? property, DateTime? settlementTime)
+    {
+        return settlementTime ?? property!.Schedule!.StartTime!.Value;
+    }
+
+    private static DateTime GetStartTime(Property? property, decimal? deposit, DateTime? settlementTime)
+    {
+        var actualSettlementTime = GetSettlementTime(property, settlementTime);
+        if (deposit is not null)
         {
-            Deposit = deposit;
-            SettlementTime = settlementTime ?? property!.Schedule!.StartTime!.Value;
-            Property = property;
-            LoanAmount = loanAmount;
-            PurchaseAdditionalCost = property?.PurchaseAdditionalCost ?? 0;
-            System.Diagnostics.Debug.Assert(deposit is not null && SettlementTime is not null && Property!.Schedule!.PurchaseTime <= SettlementTime || deposit is null);
+            var purchaseTime = property!.Schedule!.PurchaseTime;
+            if (purchaseTime > actualSettlementTime)
+                throw new Exception("Purchase time is not allowed to be later than settlement time.");
+
+            return purchaseTime;
         }
 
-        private static DateTime GetStartTime(Property? property, decimal? deposit, DateTime? settlementTime)
+        return actualSettlementTime;
+    }
+
+    protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor,
+        DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
+    {
+        if (Deposit is not null)
         {
-            if(deposit is not null)
+            var purchaseTime = Property!.Schedule!.PurchaseTime;
+            if (currentTime == purchaseTime)
             {
-                var purchaseTime = property!.Schedule!.PurchaseTime;
-                return purchaseTime;
+                Debug.Assert(purchaseTime <= SettlementTime);
+                executor.ExecuteTransaction(CashAccount, -Deposit.Value, this, $"Deposit for {Name}");
+                if (purchaseTime < SettlementTime) return (currentTime, SettlementTime!.Value);
             }
-            return settlementTime ?? property!.Schedule!.StartTime!.Value;
+
+            if (currentTime < purchaseTime) return (currentTime, purchaseTime);
         }
 
-        protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
+        if (currentTime == SettlementTime)
         {
-            if (Deposit is not null)
-            {
-                var purchaseTime = Property!.Schedule!.PurchaseTime;
-                if (currentTime == purchaseTime)
-                {
-                    System.Diagnostics.Debug.Assert(purchaseTime <= SettlementTime);
-                    executor.ExecuteTransaction(CashAccount, -Deposit.Value, this, $"Deposit for {Name}");
-                    if (purchaseTime < SettlementTime)
-                    {
-                        return (currentTime, SettlementTime!.Value);
-                    }
-                }
-            }
+            var totalFundsRequired = (Property?.Schedule?.PurchasePrice ?? 0) + PurchaseAdditionalCost - (Deposit ?? 0);
+            var cashRequired = totalFundsRequired - LoanAmount;
+            executor.ExecuteTransaction(CashAccount, -cashRequired, this, $"Settlement for {Name}");
 
-            if (currentTime == SettlementTime)
-            {
-                var totalFundsRequired = (Property?.Schedule?.PurchasePrice??0) + PurchaseAdditionalCost - (Deposit ?? 0);
-                var cashRequired = totalFundsRequired - LoanAmount;
-                executor.ExecuteTransaction(CashAccount, -cashRequired, this, $"Settlement for {Name}");
+            OnSettlement?.Invoke(this, executor, -cashRequired);
 
-                OnSettlement?.Invoke(this, executor, -cashRequired);
-                
-                executor.ExecuteTransaction(Account!, -LoanAmount, this, $"Loan amount for {Name}");
+            executor.ExecuteTransaction(Account!, -LoanAmount, this, $"Loan amount for {Name}");
 
-                return (currentTime, currentTime.AddMonths(1));
-            }
-            else
-            {
-                // Update in every iteration of Execution() call, as the conditions may change for each iteration.
-                if (LoanAmount == 102667)
-                {
-                    LoanAmount = LoanAmount;
-                }
-                DateTime newTime;
-                while (true)
-                {
-                    newTime = lastProcessedTime!.Value.AddMonths(1);
-                    if (newTime > currentTime)
-                    {
-                        break;
-                    }
-                    ApplyRepayment(executor, newTime - lastProcessedTime!.Value);
-                    lastProcessedTime = newTime;
-                }
-                return (lastProcessedTime!.Value, newTime);
-            }
+            _nextChargeTime = SettlementTime!.Value.AddMonths(_chargeCount + 1);
+            return (currentTime, NextCalculationTime(currentTime));
         }
 
-        private decimal CalculateMonthlyPayment()
+        if (currentTime < SettlementTime) return (currentTime, SettlementTime);
+
+        Debug.Assert(_nextChargeTime.HasValue);
+
+        AccrueInterest(currentTime - lastProcessedTime!.Value);
+
+        if (currentTime >= _nextChargeTime)
         {
-            double monthlyRate = (double)AnnualInterestRate / 12 ;  // e.g. 5.55 -> 0.004625
-            double numPayments = (double)LoanTermYears! * 12;
+            ApplyRepayment(executor);
 
-            if (monthlyRate == 0) return (decimal)((double)LoanAmount / numPayments);
-
-            double power = Math.Pow(1 + monthlyRate, numPayments);
-            return (decimal)((double)LoanAmount * (monthlyRate * power) / (power - 1));
+            _chargeCount++;
+            _nextChargeTime = SettlementTime!.Value.AddMonths(_chargeCount + 1);
         }
-        // private decimal CalculateMonthlyPayment()  // for recalc on existing loans
-        // {
-        //     double r = (double)AnnualInterestRate / 12.0;
-        //     double n = (double)LoanTermYears! * 12;
 
-        //     if (Math.Abs(r) < 0.000001)
-        //         return (decimal)Math.Ceiling( (double)LoanAmount / n * 100) / 100;
+        var newTime = NextCalculationTime(currentTime);
+        return (currentTime, newTime);
+    }
 
-        //     double power = Math.Pow(1 + r, n);
-        //     double payment = (double)LoanAmount * (r * power) / (power - 1);
+    // Like the lender, the repayment is fixed until the rate changes, then recalculated from the current balance over the remaining term.
+    private int TermMonths => (int)(LoanTermYears!.Value * 12);
 
-        //     // ANZ-like adjustments
-        //     payment = Math.Round(payment, 2);           // bank rounding
-        //     // payment = Math.Floor(payment);           // sometimes they floor it
-
-        //     return (decimal)payment;
-        // }
-
-        private void ApplyRepayment(ContractExecutor executor, TimeSpan time)
+    private decimal GetMonthlyPayment()
+    {
+        if (_monthlyPayment is null || _monthlyPaymentRate != AnnualInterestRate)
         {
-            var fractionOfYear = time.Days / Constants.DaysPerYear;
+            var remainingMonths = TermMonths - _chargeCount;
+            _monthlyPayment = CalculateMonthlyPayment(-Account!.Balance, remainingMonths);
+            _monthlyPaymentRate = AnnualInterestRate;
+        }
 
-            var interestApplicable = Math.Max(0, (-Account!.Balance) - CashAccount.Balance * OffsetRatio);  // Assuming the offset account reduces the interest applied on the loan balance.
-            var interest = AnnualInterestRate * fractionOfYear * interestApplicable;
+        return _monthlyPayment.Value;
+    }
 
-            if (LoanTermYears.HasValue)
+    private decimal CalculateMonthlyPayment(decimal balance, int remainingMonths)
+    {
+        if (remainingMonths <= 0) return balance; // Past the term: clear the rest.
+
+        var monthlyRate = (double)AnnualInterestRate / 12; // e.g. 0.0555 -> 0.004625
+        var payment = monthlyRate == 0
+            ? (double)balance / remainingMonths
+            : (double)balance * monthlyRate / (1 - Math.Pow(1 + monthlyRate, -remainingMonths));
+
+        return Math.Ceiling((decimal)payment * 100) / 100; // Lenders round the repayment up to the cent.
+    }
+
+    private void AccrueInterest(TimeSpan time)
+    {
+        var fractionOfYear = (decimal)time.TotalDays / InterestDaysPerYear;
+
+        // Assuming the offset account reduces the interest applied on the loan balance.
+        var interestApplicable = Math.Max(0, -Account!.Balance - CashAccount.Balance * OffsetRatio);
+        _accumulatedInterest += AnnualInterestRate * fractionOfYear * interestApplicable;
+    }
+
+    private void ApplyRepayment(ContractExecutor executor)
+    {
+        // Assuming interest and principal are charged at the same time.
+        decimal principalPayment = 0;
+        if (LoanTermYears.HasValue)
+        {
+            var monthlyPayment = GetMonthlyPayment();
+            // The final scheduled repayment clears whatever is left (e.g. extra interest from leap years).
+            var isFinalRepayment = _chargeCount + 1 >= TermMonths;
+            principalPayment = isFinalRepayment
+                ? Math.Max(0, -Account!.Balance)
+                : Math.Max(0, Math.Min(monthlyPayment - _accumulatedInterest, -Account!.Balance));
+
+            if (principalPayment > 0)
             {
-                var currentMonthlyPayment = CalculateMonthlyPayment();
-                var principalPayment = currentMonthlyPayment * fractionOfYear * 12 - interest;
-                if (Account!.Balance + principalPayment > 0)  // If the calculated principal payment exceeds the remaining balance, adjust it to only pay off the remaining balance.
-                {
-                    principalPayment = -Account.Balance;
-                }
-
-                executor.ExecuteTransaction(CashAccount, -(interest + principalPayment), this, $"P+I repayment for {Name}");
                 executor.ExecuteTransaction(Account!, principalPayment, this, $"Principal payment for {Name}");
-
                 if (PaidPrincipalTrackerKey is not null)
-                {
                     executor.ChangeTrackers?[PaidPrincipalTrackerKey].TrackChange(-principalPayment);
-                }
-            }
-            else
-            {
-                executor.ExecuteTransaction(CashAccount, -interest, this, $"Interest payment for {Name}");
-            }
-
-            if (PaidInterestTrackerKey is not null)
-            {
-                executor.ChangeTrackers?[PaidInterestTrackerKey].TrackChange(-interest);
             }
         }
+
+        var cashDebit = _accumulatedInterest + principalPayment;
+        if (cashDebit > 0)
+        {
+            var cashTransactionName =
+                LoanTermYears.HasValue ? $"P+I repayment for {Name}" : $"Interest payment for {Name}";
+            executor.ExecuteTransaction(CashAccount, -cashDebit, this, cashTransactionName);
+        }
+
+        if (PaidInterestTrackerKey is not null && _accumulatedInterest > 0)
+            executor.ChangeTrackers?[PaidInterestTrackerKey].TrackChange(-_accumulatedInterest);
+
+        _accumulatedInterest = 0;
     }
 }
