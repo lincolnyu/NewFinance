@@ -17,85 +17,79 @@ string? targetConfigFilePath = null;
 string? workingConfigFilePath = null;
 
 Configuration? config = null;
-while(config is null)
+while (config is null)
 {
-    switch (ReadOptionsUntilAnswered("I would like to ...", ('c', "Create a new config."), ('o', "Open an existing config.")))
+    switch (ReadOptionsUntilAnswered("I would like to ...", ('c', "Create a new config."),
+                ('o', "Open an existing config.")))
     {
         case 0: // New
+        {
+            var fileLocation = Answer("File location:");
+            if (string.IsNullOrWhiteSpace(fileLocation))
             {
-                var fileLocation = Answer("File location:");
-                if (string.IsNullOrWhiteSpace(fileLocation))
+                fileLocation = null;
+            }
+            else if (File.Exists(fileLocation))
+            {
+                var overwrite = ReadYesOrNoUntilAnswered("File already exists. Overwrite");
+                if (!overwrite) fileLocation = null;
+            }
+            else if (Directory.Exists(fileLocation))
+            {
+                var fileName = Answer("File name:");
+                fileLocation = Path.Combine(fileLocation, fileName!);
+                if (Path.GetExtension(fileLocation) == "") fileLocation += ".json";
+            }
+            else
+            {
+                var cwd = Directory.GetCurrentDirectory();
+                fileLocation = Path.Combine(cwd, fileLocation);
+                var containingFolder = Path.GetDirectoryName(fileLocation);
+                if (!Directory.Exists(containingFolder))
                 {
+                    Console.WriteLine($"Folder {containingFolder} not found");
                     fileLocation = null;
                 }
-                else if (File.Exists(fileLocation))
-                {
-                    bool overwrite = ReadYesOrNoUntilAnswered("File already exists. Overwrite");
-                    if (!overwrite)
-                    {
-                        fileLocation = null;
-                    }
-                }
-                else if (Directory.Exists(fileLocation))
-                {
-                    var fileName = Answer("File name:");
-                    fileLocation = Path.Combine(fileLocation, fileName!);
-                    if (Path.GetExtension(fileLocation) == "")
-                    {
-                        fileLocation += ".json";
-                    }
-                }
-                else
-                {
-                    var cwd = Directory.GetCurrentDirectory();
-                    fileLocation = Path.Combine(cwd, fileLocation);
-                    var containingFolder = Path.GetDirectoryName(fileLocation);
-                    if (!Directory.Exists(containingFolder))
-                    {
-                        Console.WriteLine($"Folder {containingFolder} not found");
-                        fileLocation = null;
-                    }
-                }
-                if (fileLocation is not null)
-                {
-                    config = new Configuration();
-            // Working file that is updated on the fly.
-            // A later script (or an explicit “Save” action) can copy this
-            // to the real destination (fileLocation).
-            workingConfigFilePath = tempConfigFile;
-                break;
             }
-        case 1:
+
+            if (fileLocation is not null)
             {
-                var fileLocation = Answer("File location:");
-                if (File.Exists(fileLocation))
-                {
-                    targetConfigFilePath = fileLocation;
-                    File.Copy(fileLocation, tempConfigFile, true);
-                    config = SerializationHelper.LoadFromFile(tempConfigFile);
-                    if (config is null)
-                    {
-                        Console.WriteLine($"Error opening config file {fileLocation}");
-                }
-                    workingConfigFilePath = tempConfigFile;
-                }
-                else
-                {
-                    Console.WriteLine("File is not found.");
-                }
-                break;
+                config = new Configuration();
+                // Working file that is updated on the fly.
+                // A later script (or an explicit “Save” action) can copy this
+                // to the real destination (fileLocation).
+                workingConfigFilePath = tempConfigFile;
             }
+
+            break;
+        }
+        case 1:
+        {
+            var fileLocation = Answer("File location:");
+            if (File.Exists(fileLocation))
+            {
+                targetConfigFilePath = fileLocation;
+                File.Copy(fileLocation, tempConfigFile, true);
+                config = SerializationHelper.LoadFromFile(tempConfigFile);
+                if (config is null) Console.WriteLine($"Error opening config file {fileLocation}");
+                workingConfigFilePath = tempConfigFile;
+            }
+            else
+            {
+                Console.WriteLine("File is not found.");
+            }
+
+            break;
+        }
     }
 
     if (config is null || workingConfigFilePath is null)
-    {
         // Opening an existing config is not implemented yet, so there is nothing to populate.
         continue;
-    }
 
     while (true)
     {
-        bool addIndividual = false;
+        var addIndividual = false;
         if (config.TaxIndividuals.Count < 1)
         {
             Console.WriteLine("Add the first tax individual ...");
@@ -104,19 +98,11 @@ while(config is null)
         else
         {
             Console.WriteLine($"Current {config.TaxIndividuals.Count} tax individuals:");
-            foreach (var ind in config.TaxIndividuals)
-            {
-                Console.WriteLine($" {ind.Name}");
-            }
-            if (ReadYesOrNoUntilAnswered($"Add another or edit an existing tax individual"))
-            {
-                addIndividual = true;
-            }
+            foreach (var ind in config.TaxIndividuals) Console.WriteLine($" {ind.Name}");
+            if (ReadYesOrNoUntilAnswered("Add another or edit an existing tax individual")) addIndividual = true;
         }
-        if (!addIndividual)
-        {
-            break;
-        }
+
+        if (!addIndividual) break;
 
         while (true)
         {
@@ -124,7 +110,7 @@ while(config is null)
             if (!string.IsNullOrWhiteSpace(name))
             {
                 name = name.Trim();
-                var individual = config.TaxIndividuals.FirstOrDefault(x=>x.Name == name);
+                var individual = config.TaxIndividuals.FirstOrDefault(x => x.Name == name);
                 if (individual is null)
                 {
                     individual = new TaxIndividual
@@ -140,12 +126,10 @@ while(config is null)
                     if (ReadYesOrNoUntilAnswered($"An existing individual named {name} is found. Rename it"))
                     {
                         name = Answer("Name of the individual to rename to (leave it blank to NOT rename):");
-                        if (!string.IsNullOrWhiteSpace(name))
-                        {
-                            individual.Name = name.Trim();
-                        }
+                        if (!string.IsNullOrWhiteSpace(name)) individual.Name = name.Trim();
                     }
                 }
+
                 break;
             }
         }
@@ -155,103 +139,84 @@ while(config is null)
 
     while (true)
     {
-        bool addFamily = false;
+        var addFamily = false;
         Console.WriteLine($"Current {config.Families.Count} families:");
-        foreach (var fam in config.Families)
-        {
-            Console.WriteLine($" {fam.Name}");
-        }
-        if (ReadYesOrNoUntilAnswered($"Add or edit a family"))
-        {
-            addFamily = true;
-        }
-        if (!addFamily)
-        {
-            break;
-        }
+        foreach (var fam in config.Families) Console.WriteLine($" {fam.Name}");
+        if (ReadYesOrNoUntilAnswered("Add or edit a family")) addFamily = true;
+        if (!addFamily) break;
 
         Family? family = null;
         var name = Answer("Name of the family (empty name to cancel):");
-            if (!string.IsNullOrWhiteSpace(name))
-            {
-                name = name.Trim();
-                family = config.Families.FirstOrDefault(x=>x.Name == name);
-                if (family is null)
-                {
-                    family = new Family
-                    {
-                        Name = name
-                    };
-                    // The family used to be dropped on the floor here so nothing ever reached config.Families.
-                    config.Families.Add(family);
-                    Console.WriteLine($"A new family named {name} is added.");
-                }
-                else
-                {
-                    if (ReadYesOrNoUntilAnswered($"An existing family named {name} is found. Rename it"))
-                    {
-                        name = Answer("Name of the family to rename to (leave it blank to NOT rename):");
-                        if (!string.IsNullOrWhiteSpace(name))
-                        {
-                            family.Name = name.Trim();
-                        }
-                    }
-                }
-            
-        while (true)
+        if (!string.IsNullOrWhiteSpace(name))
         {
-            Console.WriteLine($"Current {family.TaxMembers.Count} family members:");
-            foreach (var ti in config.TaxIndividuals)
+            name = name.Trim();
+            family = config.Families.FirstOrDefault(x => x.Name == name);
+            if (family is null)
             {
-                if (family.TaxMembers.Contains(ti))
+                family = new Family
                 {
-                    Console.WriteLine($" * {ti.Name}");
-                }
-                else
+                    Name = name
+                };
+                // The family used to be dropped on the floor here so nothing ever reached config.Families.
+                config.Families.Add(family);
+                Console.WriteLine($"A new family named {name} is added.");
+            }
+            else
+            {
+                if (ReadYesOrNoUntilAnswered($"An existing family named {name} is found. Rename it"))
                 {
-                    Console.WriteLine($"   {ti.Name}");
+                    name = Answer("Name of the family to rename to (leave it blank to NOT rename):");
+                    if (!string.IsNullOrWhiteSpace(name)) family.Name = name.Trim();
                 }
             }
-            if (!ReadYesOrNoUntilAnswered($"Add or remove a family member"))
+
+            while (true)
             {
-                break;
-            }
+                Console.WriteLine($"Current {family.TaxMembers.Count} family members:");
+                foreach (var ti in config.TaxIndividuals)
+                    if (family.TaxMembers.Contains(ti))
+                        Console.WriteLine($" * {ti.Name}");
+                    else
+                        Console.WriteLine($"   {ti.Name}");
+
+                if (!ReadYesOrNoUntilAnswered("Add or remove a family member")) break;
 
                 var memberName = Answer("Name of the member to add/remove:");
                 if (!string.IsNullOrWhiteSpace(memberName))
-            {
-                    var member = config.TaxIndividuals.FirstOrDefault(x=>x.Name == memberName.Trim());
-                if(member is not null)
                 {
-                    if (family.TaxMembers.Contains(member))
+                    var member = config.TaxIndividuals.FirstOrDefault(x => x.Name == memberName.Trim());
+                    if (member is not null)
                     {
-                        family.TaxMembers.Remove(member);
-                        member.Family = null;
-                        Console.WriteLine("Member removed.");
+                        if (family.TaxMembers.Contains(member))
+                        {
+                            family.TaxMembers.Remove(member);
+                            member.Family = null;
+                            Console.WriteLine("Member removed.");
+                        }
+                        else
+                        {
+                            // AddTaxMember also back-links the individual to the family, which the tax rules rely on.
+                            family.AddTaxMember(member);
+                            Console.WriteLine("Member added.");
+                        }
                     }
                     else
                     {
-                        // AddTaxMember also back-links the individual to the family, which the tax rules rely on.
-                        family.AddTaxMember(member);
-                        Console.WriteLine("Member added.");
+                        Console.WriteLine($"No tax individual named {memberName.Trim()} is found.");
                     }
                 }
-                else
+            }
+
+            while (true)
+            {
+                var numDepsStr = Answer("Number of dependencies:", family.DependencyCount.ToString());
+                if (int.TryParse(numDepsStr, out var numDeps) && numDeps >= 0)
                 {
-                        Console.WriteLine($"No tax individual named {memberName.Trim()} is found.");
+                    family.DependencyCount = numDeps;
+                    break;
                 }
             }
         }
-        while (true)
-        {
-            var numDepsStr = Answer("Number of dependencies:", family.DependencyCount.ToString());
-            if (int.TryParse(numDepsStr, out var numDeps) && numDeps >= 0)
-            {
-                family.DependencyCount = numDeps;
-                break;
-            }
-        }
-    }
     }
 
     config.SaveToFile(workingConfigFilePath);
@@ -259,20 +224,11 @@ while(config is null)
     while (true)
     {
         Console.WriteLine($"Current {config.Accounts.Count} accounts:");
-        foreach (var acc in config.Accounts)
-        {
-            Console.WriteLine($" {DescribeAccount(acc)}");
-        }
-        if (!ReadYesOrNoUntilAnswered("Add or remove an account"))
-        {
-            break;
-        }
+        foreach (var acc in config.Accounts) Console.WriteLine($" {DescribeAccount(acc)}");
+        if (!ReadYesOrNoUntilAnswered("Add or remove an account")) break;
 
         var accountName = Answer("Name of the account (leave it blank to cancel):");
-        if (string.IsNullOrWhiteSpace(accountName))
-        {
-            continue;
-        }
+        if (string.IsNullOrWhiteSpace(accountName)) continue;
         accountName = accountName.Trim();
 
         var existingAccount = config.Accounts.FirstOrDefault(x => x.Name == accountName);
@@ -284,26 +240,24 @@ while(config is null)
                 RemoveAccount(config, existingAccount);
                 Console.WriteLine("Account removed.");
             }
+
             continue;
         }
 
-        Account? account = ReadOptionsUntilAnswered("Type of the account",
-            ('c', "Cash or everyday account."),
-            ('f', "Fund (shares, bonds, term deposit ...)."),
-            ('p', "Property."),
-            ('l', "Loan.")) switch
-        {
-            0 => new Account(accountName, ReadDecimal("Current balance:", 0m)),
-            1 => CreateFundAccount(config, accountName),
-            2 => CreatePropertyAccount(config, accountName),
-            3 => CreateLoanAccount(config, accountName),
-            _ => null
-        };
+        var account = ReadOptionsUntilAnswered("Type of the account",
+                ('c', "Cash or everyday account."),
+                ('f', "Fund (shares, bonds, term deposit ...)."),
+                ('p', "Property."),
+                ('l', "Loan.")) switch
+            {
+                0 => new Account(accountName, ReadDecimal("Current balance:", 0m)),
+                1 => CreateFundAccount(config, accountName),
+                2 => CreatePropertyAccount(config, accountName),
+                3 => CreateLoanAccount(config, accountName),
+                _ => null
+            };
 
-        if (account is null)
-        {
-            continue;
-        }
+        if (account is null) continue;
 
         // The loan helpers derive their own account name, so the duplicate check has to be repeated here.
         if (config.Accounts.Any(x => x.Name == account.Name))
@@ -320,12 +274,11 @@ while(config is null)
         var accountContracts = GetAccountContracts(account).ToList();
         if (accountContracts.Count > 0)
         {
-            var isOptional = ReadYesOrNoUntilAnswered($"Is '{account.Name}' an optional (what-if) arrangement rather than an existing one");
+            var isOptional =
+                ReadYesOrNoUntilAnswered(
+                    $"Is '{account.Name}' an optional (what-if) arrangement rather than an existing one");
             var isEnabled = isOptional && ReadYesOrNoUntilAnswered("Enable it by default");
-            foreach (var contract in accountContracts)
-            {
-                RegisterContract(config, contract, isOptional, isEnabled);
-            }
+            foreach (var contract in accountContracts) RegisterContract(config, contract, isOptional, isEnabled);
         }
     }
 
@@ -334,14 +287,8 @@ while(config is null)
     while (true)
     {
         Console.WriteLine($"Current {config.ExistingContracts.Count} existing contracts:");
-        foreach (var contract in config.ExistingContracts)
-        {
-            Console.WriteLine($" {contract.Name}");
-        }
-        if (!ReadYesOrNoUntilAnswered("Add or remove an existing contract"))
-        {
-            break;
-        }
+        foreach (var contract in config.ExistingContracts) Console.WriteLine($" {contract.Name}");
+        if (!ReadYesOrNoUntilAnswered("Add or remove an existing contract")) break;
 
         if (ReadYesOrNoUntilAnswered("Remove one instead of adding"))
         {
@@ -363,47 +310,45 @@ while(config is null)
     {
         Console.WriteLine($"Current {config.OptionalContracts.Count} optional contracts:");
         foreach (var (contract, enabled) in config.OptionalContracts)
-        {
             Console.WriteLine($" {contract.Name} ({(enabled ? "enabled" : "disabled")} by default)");
-        }
-        if (!ReadYesOrNoUntilAnswered("Add, remove or toggle an optional contract"))
-        {
-            break;
-        }
+        if (!ReadYesOrNoUntilAnswered("Add, remove or toggle an optional contract")) break;
 
         switch (ReadOptionsUntilAnswered("I would like to ...",
-            ('a', "Add an optional contract."),
-            ('t', "Toggle whether one is enabled by default."),
-            ('r', "Remove one.")))
+                    ('a', "Add an optional contract."),
+                    ('t', "Toggle whether one is enabled by default."),
+                    ('r', "Remove one.")))
         {
             case 0:
+            {
+                var newContract = CreateContract(config);
+                if (newContract is not null)
                 {
-                    var newContract = CreateContract(config);
-                    if (newContract is not null)
-                    {
-                        var enabled = ReadYesOrNoUntilAnswered("Enable it by default");
-                        config.OptionalContracts.Add((newContract, enabled));
-                        Console.WriteLine($"Optional contract '{newContract.Name}' is added.");
-                    }
-                    break;
+                    var enabled = ReadYesOrNoUntilAnswered("Enable it by default");
+                    config.OptionalContracts.Add((newContract, enabled));
+                    Console.WriteLine($"Optional contract '{newContract.Name}' is added.");
                 }
+
+                break;
+            }
             case 1:
+            {
+                var toggled = SelectContract(config.OptionalContracts.Select(x => x.Item1).ToList(),
+                    "Contract to toggle:");
+                if (toggled is not null)
                 {
-                    var toggled = SelectContract(config.OptionalContracts.Select(x => x.Item1).ToList(), "Contract to toggle:");
-                    if (toggled is not null)
-                    {
-                        var index = config.OptionalContracts.FindIndex(x => x.Item1 == toggled);
-                        var enabled = !config.OptionalContracts[index].Item2;
-                        config.OptionalContracts[index] = (toggled, enabled);
-                        Console.WriteLine($"'{toggled.Name}' is now {(enabled ? "enabled" : "disabled")} by default.");
-                    }
-                    break;
+                    var index = config.OptionalContracts.FindIndex(x => x.Item1 == toggled);
+                    var enabled = !config.OptionalContracts[index].Item2;
+                    config.OptionalContracts[index] = (toggled, enabled);
+                    Console.WriteLine($"'{toggled.Name}' is now {(enabled ? "enabled" : "disabled")} by default.");
                 }
+
+                break;
+            }
             case 2:
-                {
-                    RemoveContract(config, config.OptionalContracts.Select(x => x.Item1).ToList());
-                    break;
-                }
+            {
+                RemoveContract(config, config.OptionalContracts.Select(x => x.Item1).ToList());
+                break;
+            }
         }
     }
 
@@ -413,19 +358,10 @@ while(config is null)
     // therefore also end up last in ExistingContracts, which is the order the executor relies on.
     foreach (var individual in config.TaxIndividuals)
     {
-        if (individual.Tax is not null)
-        {
-            continue;
-        }
-        if (!ReadYesOrNoUntilAnswered($"Set up the yearly tax assessment for {individual.Name}"))
-        {
-            continue;
-        }
+        if (individual.Tax is not null) continue;
+        if (!ReadYesOrNoUntilAnswered($"Set up the yearly tax assessment for {individual.Name}")) continue;
         var taxAccount = SelectAccount(config, $"Account {individual.Name} pays tax from and receives refunds into:");
-        if (taxAccount is null)
-        {
-            continue;
-        }
+        if (taxAccount is null) continue;
         var tax = new IndividualTax(individual, taxAccount).CreateAllNaturalTrackerKeys();
         individual.Tax = tax;
         config.ExistingContracts.Add(tax);
@@ -445,20 +381,14 @@ while(config is null)
         }
         else if (File.Exists(fileLocation))
         {
-            bool overwrite = ReadYesOrNoUntilAnswered("File already exists. Overwrite");
-            if (!overwrite)
-            {
-                fileLocation = null;
-            }
+            var overwrite = ReadYesOrNoUntilAnswered("File already exists. Overwrite");
+            if (!overwrite) fileLocation = null;
         }
         else if (Directory.Exists(fileLocation))
         {
             var fileName = Answer("File name:");
             fileLocation = Path.Combine(fileLocation, fileName!);
-            if (Path.GetExtension(fileLocation) == "")
-            {
-                fileLocation += ".json";
-            }
+            if (Path.GetExtension(fileLocation) == "") fileLocation += ".json";
         }
         else
         {
@@ -471,10 +401,8 @@ while(config is null)
                 fileLocation = null;
             }
         }
-        if (fileLocation is not null)
-        {
-            targetConfigFilePath = fileLocation;
-        }
+
+        if (fileLocation is not null) targetConfigFilePath = fileLocation;
     }
 
     File.Copy(workingConfigFilePath, targetConfigFilePath, true);
@@ -486,10 +414,7 @@ while(config is null)
 static string Answer(string question, string defaultValue = "")
 {
     Console.WriteLine(question);
-    if (!string.IsNullOrEmpty(defaultValue))
-    {
-        Console.Write($"[{defaultValue}] ");
-    }
+    if (!string.IsNullOrEmpty(defaultValue)) Console.Write($"[{defaultValue}] ");
     var answer = Console.ReadLine();
     // A blank answer accepts the offered default rather than entering an empty string.
     return string.IsNullOrWhiteSpace(answer) ? defaultValue : answer;
@@ -500,30 +425,21 @@ static string AnswerUntilAnswered(string question)
     while (true)
     {
         var answer = Answer(question);
-        if (!string.IsNullOrWhiteSpace(answer))
-        {
-            return answer.Trim();
-        }
+        if (!string.IsNullOrWhiteSpace(answer)) return answer.Trim();
     }
 }
 
 static int? ReadOptions(string question, params (char, string)[] options)
 {
     Console.WriteLine($"{question}?");
-    foreach (var (c,s) in options)
-    {
-        Console.WriteLine($"{char.ToUpper(c)}) {s}");
-    }
+    foreach (var (c, s) in options) Console.WriteLine($"{char.ToUpper(c)}) {s}");
     var key = Console.ReadKey(false);
     Console.WriteLine();
 
-    int i = 0;
+    var i = 0;
     foreach (var (c, _) in options)
     {
-        if (char.ToUpper(c) == char.ToUpper(key.KeyChar))
-        {
-            return i;
-        }
+        if (char.ToUpper(c) == char.ToUpper(key.KeyChar)) return i;
         i++;
     }
 
@@ -536,6 +452,7 @@ static int ReadOptionsUntilAnswered(string question, params (char, string)[] opt
     do
     {
     } while ((answer = ReadOptions(question, options)) == null);
+
     return answer!.Value;
 }
 
@@ -544,14 +461,8 @@ static bool? ReadYesOrNo(string question)
     Console.WriteLine($"{question}? (Press Y or N)");
     var key = Console.ReadKey(false);
     Console.WriteLine();
-    if (key.Key == ConsoleKey.Y)
-    {
-        return true;
-    }
-    if (key.Key == ConsoleKey.N)
-    {
-        return false;
-    }
+    if (key.Key == ConsoleKey.Y) return true;
+    if (key.Key == ConsoleKey.N) return false;
     return null;
 }
 
@@ -561,6 +472,7 @@ static bool ReadYesOrNoUntilAnswered(string question)
     do
     {
     } while ((answer = ReadYesOrNo(question)) == null);
+
     return answer!.Value;
 }
 
@@ -569,10 +481,7 @@ static decimal ReadDecimal(string question, decimal defaultValue)
     while (true)
     {
         var text = Answer(question, FormatNumber(defaultValue));
-        if (decimal.TryParse(text, out var value))
-        {
-            return value;
-        }
+        if (decimal.TryParse(text, out var value)) return value;
         Console.WriteLine("Please enter a valid number.");
     }
 }
@@ -582,14 +491,8 @@ static decimal? ReadOptionalDecimal(string question)
     while (true)
     {
         var text = Answer($"{question} (leave it blank for none):");
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return null;
-        }
-        if (decimal.TryParse(text, out var value))
-        {
-            return value;
-        }
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        if (decimal.TryParse(text, out var value)) return value;
         Console.WriteLine("Please enter a valid number.");
     }
 }
@@ -599,10 +502,7 @@ static int ReadPositiveInt(string question, int defaultValue)
     while (true)
     {
         var text = Answer(question, defaultValue.ToString());
-        if (int.TryParse(text, out var value) && value > 0)
-        {
-            return value;
-        }
+        if (int.TryParse(text, out var value) && value > 0) return value;
         Console.WriteLine("Please enter a positive whole number.");
     }
 }
@@ -615,10 +515,7 @@ static decimal ReadRate(string question, decimal defaultValue)
     while (true)
     {
         var text = Answer(question, FormatNumber(defaultValue));
-        if (TryParseRate(text, out var value))
-        {
-            return value;
-        }
+        if (TryParseRate(text, out var value)) return value;
         Console.WriteLine("Please enter a rate, e.g. 5% or 0.05.");
     }
 }
@@ -626,24 +523,12 @@ static decimal ReadRate(string question, decimal defaultValue)
 static bool TryParseRate(string text, out decimal value)
 {
     value = 0m;
-    if (string.IsNullOrWhiteSpace(text))
-    {
-        return false;
-    }
+    if (string.IsNullOrWhiteSpace(text)) return false;
     text = text.Trim();
     var isPercentage = text.EndsWith('%');
-    if (isPercentage)
-    {
-        text = text[..^1].TrimEnd();
-    }
-    if (!decimal.TryParse(text, out value))
-    {
-        return false;
-    }
-    if (isPercentage)
-    {
-        value /= 100m;
-    }
+    if (isPercentage) text = text[..^1].TrimEnd();
+    if (!decimal.TryParse(text, out value)) return false;
+    if (isPercentage) value /= 100m;
     return true;
 }
 
@@ -652,10 +537,7 @@ static DateTime ReadDate(string question, DateTime? defaultValue = null)
     while (true)
     {
         var text = Answer($"{question} (yyyy-MM-dd)", defaultValue?.ToString("yyyy-MM-dd") ?? "");
-        if (DateTime.TryParse(text, out var value))
-        {
-            return value.Date;
-        }
+        if (DateTime.TryParse(text, out var value)) return value.Date;
         Console.WriteLine("Please enter a valid date, e.g. 2026-06-30.");
     }
 }
@@ -665,19 +547,16 @@ static DateTime? ReadOptionalDate(string question)
     while (true)
     {
         var text = Answer($"{question} (yyyy-MM-dd, leave it blank for none):");
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return null;
-        }
-        if (DateTime.TryParse(text, out var value))
-        {
-            return value.Date;
-        }
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        if (DateTime.TryParse(text, out var value)) return value.Date;
         Console.WriteLine("Please enter a valid date, e.g. 2026-06-30.");
     }
 }
 
-static string FormatNumber(decimal value) => value.ToString("0.######");
+static string FormatNumber(decimal value)
+{
+    return value.ToString("0.######");
+}
 
 static string DescribeAccount(Account account)
 {
@@ -698,26 +577,16 @@ static string DescribeAccount(Account account)
 /// </summary>
 static IEnumerable<Contract> GetAccountContracts(Account account)
 {
-    if (account is Investment investment && investment.Schedule is not null)
-    {
-        yield return investment.Schedule;
-    }
-    if (account is Loan loan && loan.Contract is not null)
-    {
-        yield return loan.Contract;
-    }
+    if (account is Investment investment && investment.Schedule is not null) yield return investment.Schedule;
+    if (account is Loan loan && loan.Contract is not null) yield return loan.Contract;
 }
 
 static void RegisterContract(Configuration config, Contract contract, bool isOptional, bool isEnabled)
 {
     if (isOptional)
-    {
         config.OptionalContracts.Add((contract, isEnabled));
-    }
     else
-    {
         config.ExistingContracts.Add(contract);
-    }
 }
 
 static Account? SelectAccount(Configuration config, string question, Func<Account, bool>? filter = null)
@@ -728,23 +597,15 @@ static Account? SelectAccount(Configuration config, string question, Func<Accoun
         Console.WriteLine("No suitable account is available yet. Add one first.");
         return null;
     }
+
     while (true)
     {
         Console.WriteLine(question);
-        foreach (var account in candidates)
-        {
-            Console.WriteLine($" {DescribeAccount(account)}");
-        }
+        foreach (var account in candidates) Console.WriteLine($" {DescribeAccount(account)}");
         var name = Answer("Name of the account (leave it blank to cancel):");
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return null;
-        }
+        if (string.IsNullOrWhiteSpace(name)) return null;
         var found = candidates.FirstOrDefault(x => x.Name == name.Trim());
-        if (found is not null)
-        {
-            return found;
-        }
+        if (found is not null) return found;
         Console.WriteLine("Account is not found.");
     }
 }
@@ -756,23 +617,15 @@ static TaxIndividual? SelectIndividual(Configuration config, string question)
         Console.WriteLine("No tax individual has been added yet.");
         return null;
     }
+
     while (true)
     {
         Console.WriteLine(question);
-        foreach (var individual in config.TaxIndividuals)
-        {
-            Console.WriteLine($" {individual.Name}");
-        }
+        foreach (var individual in config.TaxIndividuals) Console.WriteLine($" {individual.Name}");
         var name = Answer("Name of the individual (leave it blank to cancel):");
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return null;
-        }
+        if (string.IsNullOrWhiteSpace(name)) return null;
         var found = config.TaxIndividuals.FirstOrDefault(x => x.Name == name.Trim());
-        if (found is not null)
-        {
-            return found;
-        }
+        if (found is not null) return found;
         Console.WriteLine("Individual is not found.");
     }
 }
@@ -785,23 +638,16 @@ static Entity? SelectEntity(Configuration config, string question)
         Console.WriteLine("No family or tax individual has been added yet.");
         return null;
     }
+
     while (true)
     {
         Console.WriteLine(question);
         foreach (var entity in candidates)
-        {
             Console.WriteLine($" {entity.Name} ({(entity is Family ? "family" : "individual")})");
-        }
         var name = Answer("Name of the owner (leave it blank to cancel):");
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return null;
-        }
+        if (string.IsNullOrWhiteSpace(name)) return null;
         var found = candidates.FirstOrDefault(x => x.Name == name.Trim());
-        if (found is not null)
-        {
-            return found;
-        }
+        if (found is not null) return found;
         Console.WriteLine("Owner is not found.");
     }
 }
@@ -813,23 +659,15 @@ static Contract? SelectContract(List<Contract> contracts, string question)
         Console.WriteLine("No contract is available.");
         return null;
     }
+
     while (true)
     {
         Console.WriteLine(question);
-        foreach (var contract in contracts)
-        {
-            Console.WriteLine($" {contract.Name}");
-        }
+        foreach (var contract in contracts) Console.WriteLine($" {contract.Name}");
         var name = Answer("Name of the contract (leave it blank to cancel):");
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return null;
-        }
+        if (string.IsNullOrWhiteSpace(name)) return null;
         var found = contracts.FirstOrDefault(x => x.Name == name.Trim());
-        if (found is not null)
-        {
-            return found;
-        }
+        if (found is not null) return found;
         Console.WriteLine("Contract is not found.");
     }
 }
@@ -840,35 +678,21 @@ static void AssignOwnership(Configuration config, Account account)
     while (true)
     {
         Console.WriteLine($"Current {account.Ownership.Count} owners of '{account.Name}':");
-        foreach (var ownership  in account.Ownership)
-        {
+        foreach (var ownership in account.Ownership)
             Console.WriteLine($" {ownership.Entity.Name}: {ownership.Share:P2}");
-        }
-        if (!ReadYesOrNoUntilAnswered($"Add or remove an owner of '{account.Name}'"))
-        {
-            break;
-        }
+        if (!ReadYesOrNoUntilAnswered($"Add or remove an owner of '{account.Name}'")) break;
 
         var entity = SelectEntity(config, "Owner:");
-        if (entity is null)
-        {
-            continue;
-        }
+        if (entity is null) continue;
 
         List<Entity> entitiesToEdit = [];
         if (entity is Family family)
-        {
             foreach (var member in family.TaxMembers)
-            {
                 entitiesToEdit.Add(member);
-            }
-            }
         else
-        {
             entitiesToEdit.Add(entity);
-        }
 
-        var totalRemaining = 1m - account.Ownership.Sum(x=>x.Share);
+        var totalRemaining = 1m - account.Ownership.Sum(x => x.Share);
         var remainingEntitiesToEdit = entitiesToEdit.Count;
         foreach (var e in entitiesToEdit)
         {
@@ -881,28 +705,20 @@ static void AssignOwnership(Configuration config, Account account)
             }
             else
             {
-                ownership = new OwnershipShare {Entity = e} ;
-        if (isLiability)
-        {
+                ownership = new OwnershipShare { Entity = e };
+                if (isLiability)
                     ownership.AddLiability(account);
-                }
                 else
-                {
                     ownership.AddAsset(account);
-                }            
             }
 
-            var available = accountEntityIndex is not null? (totalRemaining + ownership.Share) : totalRemaining;
+            var available = accountEntityIndex is not null ? totalRemaining + ownership.Share : totalRemaining;
             var dist = available / remainingEntitiesToEdit;
-            var ownershipShare = ReadRate($"{e.Name}'s Ownership share change to ({dist*100}%):", dist);
+            var ownershipShare = ReadRate($"{e.Name}'s Ownership share change to ({dist * 100}%):", dist);
             if (ownershipShare == 0)
-            {
-                account.Ownership.RemoveAt(accountEntityIndex??account.Ownership.Count-1);
-        }
-        else
-        {
+                account.Ownership.RemoveAt(accountEntityIndex ?? account.Ownership.Count - 1);
+            else
                 ownership.Share = ownershipShare;
-            }
             totalRemaining = available - ownershipShare;
             remainingEntitiesToEdit--;
         }
@@ -917,36 +733,34 @@ static void RemoveAccount(Configuration config, Account account)
         config.ExistingContracts.Remove(contract);
         config.OptionalContracts.RemoveAll(x => x.Item1 == contract);
     }
-    foreach (var owner in account.Ownership.Select(x=>x.Entity))
+
+    foreach (var owner in account.Ownership.Select(x => x.Entity))
     {
         owner.Assets.Remove(account);
         owner.Liabilities.Remove(account);
     }
+
     account.Ownership.Clear();
 }
 
 static void RemoveContract(Configuration config, List<Contract> contracts)
 {
     var contract = SelectContract(contracts, "Contract to remove:");
-    if (contract is null)
-    {
-        return;
-    }
+    if (contract is null) return;
     if (config.Accounts.Any(x => GetAccountContracts(x).Contains(contract)))
     {
         Console.WriteLine("This contract belongs to an account. Remove the account instead.");
         return;
     }
+
     config.ExistingContracts.Remove(contract);
     config.OptionalContracts.RemoveAll(x => x.Item1 == contract);
     foreach (var individual in config.TaxIndividuals)
     {
         individual.TaxableContracts.Remove(contract);
-        if (ReferenceEquals(individual.Tax, contract))
-        {
-            individual.Tax = null;
-        }
+        if (ReferenceEquals(individual.Tax, contract)) individual.Tax = null;
     }
+
     Console.WriteLine($"Contract '{contract.Name}' is removed.");
 }
 
@@ -965,10 +779,7 @@ static BandedFlowDescriptor ReadFlowDescriptor(string amountQuestion, bool isInf
     if (increaseRate != 0m)
     {
         var years = ReadPositiveInt("Apply that increase yearly for how many years:", 50);
-        for (var i = 1; i <= years; i++)
-        {
-            reviewDates.Add(startTime.AddYears(i));
-        }
+        for (var i = 1; i <= years; i++) reviewDates.Add(startTime.AddYears(i));
     }
 
     var inflation = FlowHelpers.ConstantInflation(startTime, increaseRate);
@@ -976,20 +787,12 @@ static BandedFlowDescriptor ReadFlowDescriptor(string amountQuestion, bool isInf
 
     var yearlyCap = ReadOptionalDecimal("Cap on the yearly amount");
     if (yearlyCap.HasValue)
-    {
         FlowHelpers.FlowCapping(descriptor, Math.Abs(yearlyCap.Value) / Constants.DaysPerYear, false);
-    }
 
-    if (!isInflow)
-    {
-        NegateFlow(descriptor);
-    }
+    if (!isInflow) NegateFlow(descriptor);
 
     var endTime = ReadOptionalDate("End date");
-    if (endTime.HasValue && endTime.Value > startTime)
-    {
-        TruncateFlow(descriptor, endTime.Value);
-    }
+    if (endTime.HasValue && endTime.Value > startTime) TruncateFlow(descriptor, endTime.Value);
 
     return descriptor;
 }
@@ -1015,24 +818,20 @@ static void ScaleFlow(BandedFlowDescriptor descriptor, decimal factor)
 static void TruncateFlow(BandedFlowDescriptor descriptor, DateTime endTime)
 {
     for (var i = 0; i < descriptor.Inflows.Count; i++)
-    {
         if (descriptor.Inflows[i].EndTime >= endTime)
         {
             descriptor.Inflows[i] = (descriptor.Inflows[i].DailyRate, endTime);
             descriptor.Inflows.RemoveRange(i + 1, descriptor.Inflows.Count - i - 1);
             break;
         }
-    }
+
     descriptor.Inflows.Add((0m, DateTime.MaxValue));
 }
 
 static Fund? CreateFundAccount(Configuration config, string name)
 {
     var cashAccount = SelectAccount(config, "Cash account the distributions are paid into and the fees are paid from:");
-    if (cashAccount is null)
-    {
-        return null;
-    }
+    if (cashAccount is null) return null;
 
     var startTime = ReadDate("Date the value below is quoted at:");
     var initialValue = ReadDecimal("Current value:", 0m);
@@ -1046,10 +845,7 @@ static Fund? CreateFundAccount(Configuration config, string name)
     var feePeriodDays = ReadPositiveInt("The fee is charged every how many days:", 365);
 
     Func<decimal, (Account, decimal)>? cash = null;
-    if (payoutRate > 0m)
-    {
-        cash = yield => (cashAccount, yield * payoutRate);
-    }
+    if (payoutRate > 0m) cash = yield => (cashAccount, yield * payoutRate);
 
     var fund = new Fund(name);
     var schedule = new FundSchedule(
@@ -1073,10 +869,7 @@ static Fund? CreateFundAccount(Configuration config, string name)
 static Property? CreatePropertyAccount(Configuration config, string name)
 {
     var cashAccount = SelectAccount(config, "Cash account the rates and fees are paid from and the rent is paid into:");
-    if (cashAccount is null)
-    {
-        return null;
-    }
+    if (cashAccount is null) return null;
 
     var purchaseTime = ReadDate("Purchase (contract exchange) date:");
     var purchasePrice = ReadDecimal("Purchase price:", 0m);
@@ -1099,11 +892,9 @@ static Property? CreatePropertyAccount(Configuration config, string name)
         Console.WriteLine($"Rental income of {name} ...");
         var inducedRate = ReadRate("Portion of the rent taken by the agent and other rent-proportional costs:", 0m);
         var descriptor = ReadFlowDescriptor("Current yearly gross rent:", true);
-        if (inducedRate != 0m)
-        {
-            ScaleFlow(descriptor, 1m - inducedRate);
-        }
-        property.Schedule!.RentInducedStream = new BandedFlow(descriptor, cashAccount, $"Rent for {name}").CreateAllNaturalTrackerKeys();
+        if (inducedRate != 0m) ScaleFlow(descriptor, 1m - inducedRate);
+        property.Schedule!.RentInducedStream =
+            new BandedFlow(descriptor, cashAccount, $"Rent for {name}").CreateAllNaturalTrackerKeys();
     }
 
     return property;
@@ -1112,16 +903,11 @@ static Property? CreatePropertyAccount(Configuration config, string name)
 static Loan? CreateLoanAccount(Configuration config, string name)
 {
     var cashAccount = SelectAccount(config, "Cash account the repayments are made from:");
-    if (cashAccount is null)
-    {
-        return null;
-    }
+    if (cashAccount is null) return null;
 
     Property? property = null;
     if (config.Accounts.OfType<Property>().Any() && ReadYesOrNoUntilAnswered("Is it secured against a property"))
-    {
         property = SelectAccount(config, "Property:", x => x is Property) as Property;
-    }
 
     var loanAmount = ReadDecimal("Amount still owing:", 0m);
     var annualInterestRate = ReadRate("Annual interest rate (e.g. 5.5%):", 0m);
@@ -1132,14 +918,16 @@ static Loan? CreateLoanAccount(Configuration config, string name)
         var deposit = ReadOptionalDecimal("Deposit still to be paid at the purchase date");
         var settlementTime = ReadDate("Settlement date:", property.Schedule!.PurchaseTime);
         var offsetRatio = ReadRate("Portion of the cash account balance offsetting the loan:", 0m);
-        var loan = PropertyHelpers.CreatePropertyLoan(property, deposit, settlementTime, loanAmount, cashAccount, offsetRatio, loanTermYears, annualInterestRate);
+        var loan = PropertyHelpers.CreatePropertyLoan(property, deposit, settlementTime, loanAmount, cashAccount,
+            offsetRatio, loanTermYears, annualInterestRate);
         Console.WriteLine($"The loan is named '{loan.Name}' after the property it is secured against.");
         return loan;
     }
     else
     {
         var startTime = ReadDate("Loan start date:");
-        var loan = PropertyHelpers.CreatePersonalLoan(name, startTime, loanAmount, cashAccount, loanTermYears, annualInterestRate);
+        var loan = PropertyHelpers.CreatePersonalLoan(name, startTime, loanAmount, cashAccount, loanTermYears,
+            annualInterestRate);
         Console.WriteLine($"The loan is named '{loan.Name}'.");
         return loan;
     }
@@ -1148,33 +936,27 @@ static Loan? CreateLoanAccount(Configuration config, string name)
 static Contract? CreateContract(Configuration config)
 {
     return ReadOptionsUntilAnswered("Type of the contract",
-        ('e', "Employment income of a tax individual."),
-        ('d', "Deductible expense of a tax individual."),
-        ('s', "Super contribution."),
-        ('f', "Other regular income or expense on an account."),
-        ('b', "One-off or irregular amounts on an account.")) switch
-    {
-        0 => CreateEmployment(config),
-        1 => CreateDeductible(config),
-        2 => CreateSuperContribution(config),
-        3 => CreateGenericFlow(config),
-        4 => CreateBursts(config),
-        _ => null
-    };
+            ('e', "Employment income of a tax individual."),
+            ('d', "Deductible expense of a tax individual."),
+            ('s', "Super contribution."),
+            ('f', "Other regular income or expense on an account."),
+            ('b', "One-off or irregular amounts on an account.")) switch
+        {
+            0 => CreateEmployment(config),
+            1 => CreateDeductible(config),
+            2 => CreateSuperContribution(config),
+            3 => CreateGenericFlow(config),
+            4 => CreateBursts(config),
+            _ => null
+        };
 }
 
 static Contract? CreateEmployment(Configuration config)
 {
     var individual = SelectIndividual(config, "Whose employment is it:");
-    if (individual is null)
-    {
-        return null;
-    }
+    if (individual is null) return null;
     var cashAccount = SelectAccount(config, "Account the pay goes into:");
-    if (cashAccount is null)
-    {
-        return null;
-    }
+    if (cashAccount is null) return null;
 
     var descriptor = ReadFlowDescriptor("Current yearly gross salary:", true);
     var employment = new Employment(descriptor, individual, cashAccount)
@@ -1191,15 +973,9 @@ static Contract? CreateEmployment(Configuration config)
 static Contract? CreateDeductible(Configuration config)
 {
     var individual = SelectIndividual(config, "Who claims the deduction:");
-    if (individual is null)
-    {
-        return null;
-    }
+    if (individual is null) return null;
     var cashAccount = SelectAccount(config, "Account the expense is paid from:");
-    if (cashAccount is null)
-    {
-        return null;
-    }
+    if (cashAccount is null) return null;
 
     var name = AnswerUntilAnswered("Name of the deductible expense:");
     // A deductible is an outflow, so its flow is negative and the tax accounting negates it back.
@@ -1213,16 +989,14 @@ static Contract? CreateDeductible(Configuration config)
 static Contract? CreateSuperContribution(Configuration config)
 {
     var cashAccount = SelectAccount(config, "Account the contribution is paid from:");
-    if (cashAccount is null)
-    {
-        return null;
-    }
+    if (cashAccount is null) return null;
 
     var descriptor = ReadFlowDescriptor("Current yearly contribution:", false);
     var contribution = new SuperContribution(descriptor, cashAccount).CreateAllNaturalTrackerKeys();
     contribution.Name = Answer("Name of the contract:", contribution.Name);
 
-    var individual = SelectIndividual(config, "Whose contribution is it (leave it blank if it is not tied to an individual):");
+    var individual = SelectIndividual(config,
+        "Whose contribution is it (leave it blank if it is not tied to an individual):");
     individual?.TaxableContracts.Add(contribution);
 
     return contribution;
@@ -1231,10 +1005,7 @@ static Contract? CreateSuperContribution(Configuration config)
 static Contract? CreateGenericFlow(Configuration config)
 {
     var cashAccount = SelectAccount(config, "Account the flow is applied to:");
-    if (cashAccount is null)
-    {
-        return null;
-    }
+    if (cashAccount is null) return null;
 
     var name = AnswerUntilAnswered("Name of the flow:");
     var isInflow = ReadOptionsUntilAnswered("Is it an income or an expense", ('i', "Income."), ('e', "Expense.")) == 0;
@@ -1246,20 +1017,14 @@ static Contract? CreateGenericFlow(Configuration config)
 static Contract? CreateBursts(Configuration config)
 {
     var cashAccount = SelectAccount(config, "Account the amounts are applied to:");
-    if (cashAccount is null)
-    {
-        return null;
-    }
+    if (cashAccount is null) return null;
 
     var name = AnswerUntilAnswered("Name of the amounts:");
     var amounts = new List<(DateTime Time, decimal Amount)>();
     while (true)
     {
         var time = ReadOptionalDate(amounts.Count == 0 ? "Date of the first amount" : "Date of the next amount");
-        if (time is null)
-        {
-            break;
-        }
+        if (time is null) break;
         var amount = ReadDecimal("Amount (negative for money going out):", 0m);
         amounts.Add((time.Value, amount));
     }
@@ -1288,14 +1053,14 @@ static void PrintConfigurationSummary(Configuration config)
     {
         var family = individual.Family is null ? "no family" : $"family '{individual.Family.Name}'";
         var tax = individual.Tax is null ? "no tax assessment" : "tax assessment set up";
-        Console.WriteLine($" {individual.Name}: {family}, {individual.TaxableContracts.Count} taxable contract(s), {tax}");
+        Console.WriteLine(
+            $" {individual.Name}: {family}, {individual.TaxableContracts.Count} taxable contract(s), {tax}");
     }
 
     Console.WriteLine($"{config.Families.Count} family/families:");
     foreach (var family in config.Families)
-    {
-        Console.WriteLine($" {family.Name}: {family.TaxMembers.Count} member(s), {family.DependencyCount} dependency/dependencies");
-    }
+        Console.WriteLine(
+            $" {family.Name}: {family.TaxMembers.Count} member(s), {family.DependencyCount} dependency/dependencies");
 
     Console.WriteLine($"{config.Accounts.Count} account(s):");
     foreach (var account in config.Accounts)
@@ -1307,16 +1072,11 @@ static void PrintConfigurationSummary(Configuration config)
     }
 
     Console.WriteLine($"{config.ExistingContracts.Count} existing contract(s):");
-    foreach (var contract in config.ExistingContracts)
-    {
-        Console.WriteLine($" {contract.Name}");
-    }
+    foreach (var contract in config.ExistingContracts) Console.WriteLine($" {contract.Name}");
 
     Console.WriteLine($"{config.OptionalContracts.Count} optional contract(s):");
     foreach (var (contract, enabled) in config.OptionalContracts)
-    {
         Console.WriteLine($" {contract.Name} ({(enabled ? "enabled" : "disabled")} by default)");
-    }
 
     Console.WriteLine();
 }
