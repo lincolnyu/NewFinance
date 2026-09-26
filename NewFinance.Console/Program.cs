@@ -22,12 +22,49 @@ while(config is null)
     switch (ReadOptionsUntilAnswered("I would like to ...", ('c', "Create a new config."), ('o', "Open an existing config.")))
     {
         case 0: // New
-            config = new Configuration();
+            {
+                var fileLocation = Answer("File location:");
+                if (string.IsNullOrWhiteSpace(fileLocation))
+                {
+                    fileLocation = null;
+                }
+                else if (File.Exists(fileLocation))
+                {
+                    bool overwrite = ReadYesOrNoUntilAnswered("File already exists. Overwrite");
+                    if (!overwrite)
+                    {
+                        fileLocation = null;
+                    }
+                }
+                else if (Directory.Exists(fileLocation))
+                {
+                    var fileName = Answer("File name:");
+                    fileLocation = Path.Combine(fileLocation, fileName!);
+                    if (Path.GetExtension(fileLocation) == "")
+                    {
+                        fileLocation += ".json";
+                    }
+                }
+                else
+                {
+                    var cwd = Directory.GetCurrentDirectory();
+                    fileLocation = Path.Combine(cwd, fileLocation);
+                    var containingFolder = Path.GetDirectoryName(fileLocation);
+                    if (!Directory.Exists(containingFolder))
+                    {
+                        Console.WriteLine($"Folder {containingFolder} not found");
+                        fileLocation = null;
+                    }
+                }
+                if (fileLocation is not null)
+                {
+                    config = new Configuration();
             // Working file that is updated on the fly.
             // A later script (or an explicit “Save” action) can copy this
             // to the real destination (fileLocation).
             workingConfigFilePath = tempConfigFile;
-            break;
+                break;
+            }
         case 1:
             {
                 var fileLocation = Answer("File location:");
@@ -39,7 +76,7 @@ while(config is null)
                     if (config is null)
                     {
                         Console.WriteLine($"Error opening config file {fileLocation}");
-                    }
+                }
                     workingConfigFilePath = tempConfigFile;
                 }
                 else
@@ -135,86 +172,86 @@ while(config is null)
 
         Family? family = null;
         var name = Answer("Name of the family (empty name to cancel):");
-        if (!string.IsNullOrWhiteSpace(name))
-        {
-            name = name.Trim();
-            family = config.Families.FirstOrDefault(x=>x.Name == name);
-            if (family is null)
+            if (!string.IsNullOrWhiteSpace(name))
             {
-                family = new Family
+                name = name.Trim();
+                family = config.Families.FirstOrDefault(x=>x.Name == name);
+                if (family is null)
                 {
-                    Name = name
-                };
-                // The family used to be dropped on the floor here so nothing ever reached config.Families.
-                config.Families.Add(family);
-                Console.WriteLine($"A new family named {name} is added.");
-            }
-            else
-            {
-                if (ReadYesOrNoUntilAnswered($"An existing family named {name} is found. Rename it"))
-                {
-                    name = Answer("Name of the family to rename to (leave it blank to NOT rename):");
-                    if (!string.IsNullOrWhiteSpace(name))
+                    family = new Family
                     {
-                        family.Name = name.Trim();
+                        Name = name
+                    };
+                    // The family used to be dropped on the floor here so nothing ever reached config.Families.
+                    config.Families.Add(family);
+                    Console.WriteLine($"A new family named {name} is added.");
+                }
+                else
+                {
+                    if (ReadYesOrNoUntilAnswered($"An existing family named {name} is found. Rename it"))
+                    {
+                        name = Answer("Name of the family to rename to (leave it blank to NOT rename):");
+                        if (!string.IsNullOrWhiteSpace(name))
+                        {
+                            family.Name = name.Trim();
+                        }
                     }
                 }
-            }
             
-            while (true)
+        while (true)
+        {
+            Console.WriteLine($"Current {family.TaxMembers.Count} family members:");
+            foreach (var ti in config.TaxIndividuals)
             {
-                Console.WriteLine($"Current {family.TaxMembers.Count} family members:");
-                foreach (var ti in config.TaxIndividuals)
+                if (family.TaxMembers.Contains(ti))
                 {
-                    if (family.TaxMembers.Contains(ti))
-                    {
-                        Console.WriteLine($" * {ti.Name}");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"   {ti.Name}");
-                    }
+                    Console.WriteLine($" * {ti.Name}");
                 }
-                if (!ReadYesOrNoUntilAnswered($"Add or remove a family member"))
+                else
                 {
-                    break;
+                    Console.WriteLine($"   {ti.Name}");
                 }
+            }
+            if (!ReadYesOrNoUntilAnswered($"Add or remove a family member"))
+            {
+                break;
+            }
 
                 var memberName = Answer("Name of the member to add/remove:");
                 if (!string.IsNullOrWhiteSpace(memberName))
-                {
+            {
                     var member = config.TaxIndividuals.FirstOrDefault(x=>x.Name == memberName.Trim());
-                    if(member is not null)
+                if(member is not null)
+                {
+                    if (family.TaxMembers.Contains(member))
                     {
-                        if (family.TaxMembers.Contains(member))
-                        {
-                            family.TaxMembers.Remove(member);
-                            member.Family = null;
-                            Console.WriteLine("Member removed.");
-                        }
-                        else
-                        {
-                            // AddTaxMember also back-links the individual to the family, which the tax rules rely on.
-                            family.AddTaxMember(member);
-                            Console.WriteLine("Member added.");
-                        }
+                        family.TaxMembers.Remove(member);
+                        member.Family = null;
+                        Console.WriteLine("Member removed.");
                     }
                     else
                     {
-                        Console.WriteLine($"No tax individual named {memberName.Trim()} is found.");
+                        // AddTaxMember also back-links the individual to the family, which the tax rules rely on.
+                        family.AddTaxMember(member);
+                        Console.WriteLine("Member added.");
                     }
                 }
-            }
-            while (true)
-            {
-                var numDepsStr = Answer("Number of dependencies:", family.DependencyCount.ToString());
-                if (int.TryParse(numDepsStr, out var numDeps) && numDeps >= 0)
+                else
                 {
-                    family.DependencyCount = numDeps;
-                    break;
+                        Console.WriteLine($"No tax individual named {memberName.Trim()} is found.");
                 }
             }
         }
+        while (true)
+        {
+            var numDepsStr = Answer("Number of dependencies:", family.DependencyCount.ToString());
+            if (int.TryParse(numDepsStr, out var numDeps) && numDeps >= 0)
+            {
+                family.DependencyCount = numDeps;
+                break;
+            }
+        }
+    }
     }
 
     config.SaveToFile(workingConfigFilePath);
@@ -825,12 +862,12 @@ static void AssignOwnership(Configuration config, Account account)
             {
                 entitiesToEdit.Add(member);
             }
-        }
+            }
         else
         {
             entitiesToEdit.Add(entity);
         }
-        
+
         var totalRemaining = 1m - account.Ownership.Sum(x=>x.Share);
         var remainingEntitiesToEdit = entitiesToEdit.Count;
         foreach (var e in entitiesToEdit)
@@ -845,8 +882,8 @@ static void AssignOwnership(Configuration config, Account account)
             else
             {
                 ownership = new OwnershipShare {Entity = e} ;
-                if (isLiability)
-                {
+        if (isLiability)
+        {
                     ownership.AddLiability(account);
                 }
                 else
@@ -861,9 +898,9 @@ static void AssignOwnership(Configuration config, Account account)
             if (ownershipShare == 0)
             {
                 account.Ownership.RemoveAt(accountEntityIndex??account.Ownership.Count-1);
-            }
-            else
-            {
+        }
+        else
+        {
                 ownership.Share = ownershipShare;
             }
             totalRemaining = available - ownershipShare;

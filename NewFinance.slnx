@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="NewFinance.Console/NewFinance.Console.csproj" />
+  <Project Path="NewFinance.PrivateApp/NewFinance.PrivateApp.csproj" />
+  <Project Path="NewFinance.Tests/NewFinance.Tests.csproj" />
+  <Project Path="NewFinance/NewFinance.csproj" />
+</Solution>

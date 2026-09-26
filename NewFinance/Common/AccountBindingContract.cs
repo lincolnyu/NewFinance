@@ -1,14 +1,9 @@
 using NewFinance.Core;
 
-namespace NewFinance.Common
-{
-    public abstract class AccountBindingContract : Contract
-    {
-        public Account? Account {get; }
+namespace NewFinance.Common;
 
-        public AccountBindingContract(DateTime startTime, Account account, string name) : base(startTime, name)
-        {
-            Account = account;
-        }
-    }
+public abstract class AccountBindingContract(DateTime startTime, Account account, string name)
+    : Contract(startTime, name)
+{
+    public Account? Account { get; } = account;
 }
