@@ -34,6 +34,7 @@ public class CompoundFlow(
     Account account,
     string name) : AccountBindingContract(startTime, account, name)
 {
+    private decimal? _expectedBalance;
     private decimal _anchorPrice;
     private DateTime _anchorTime;
     private decimal _rate;
@@ -64,6 +65,8 @@ public class CompoundFlow(
         CurrentPricePerShare = price;
         if (growth != 0) executor.ExecuteTransaction(Account!, growth, this, $"Growth for {Name}");
 
+        _expectedBalance += growth;
+
         var rate = getGrowthRate(Account!.Balance);
         if (rate != _rate) Reanchor(currentTime, rate);
 
@@ -72,8 +75,11 @@ public class CompoundFlow(
 
     public override void PostExecute()
     {
-        // Only once started; the price is positive from then on.
-        if (LastProcessedTime is not null) Units = Account!.Balance / CurrentPricePerShare;
+        // Units change only when other contracts moved money in or out; otherwise they stay exact.
+        if (_expectedBalance != Account!.Balance) Units = Account!.Balance / CurrentPricePerShare;
+
+        _expectedBalance = Account!.Balance;
+
         base.PostExecute();
     }
 
