@@ -122,6 +122,31 @@ public class CompoundFlowTests
     }
 
     [Fact]
+    public void Units_ChangeOnlyWithExternalFlows()
+    {
+        var (account, flow) = CreateFlow(100_000m, 0.05m);
+        var depositTime = new DateTime(2026, 1, 1);
+        var end = new DateTime(2026, 6, 1);
+        var depositor = new ScriptedContract(Start, [depositTime],
+            (executor, _) => executor.ExecuteTransaction(account, 10_000m, flow, "Deposit"));
+
+        var executor = new ContractExecutor();
+        executor.Contracts.Add(flow);
+        executor.Contracts.Add(depositor);
+        executor.Contracts.Add(new ScriptedContract(Start, Daily(Start, end)));
+
+        RunUntil(executor, Start);
+        Assert.Equal(100_000m, flow.Units);
+
+        RunUntil(executor, depositTime.AddDays(-1));
+        Assert.Equal(100_000m, flow.Units);
+
+        RunUntil(executor, end);
+        Assert.Equal(Math.Round(100_000m + 10_000m / Grow(1m, 0.05m, Start, depositTime), 8),
+            Math.Round(flow.Units, 8));
+    }
+
+    [Fact]
     public void WithdrawingEverything_StopsGrowth()
     {
         var (account, flow) = CreateFlow(100_000m, 0.05m);
