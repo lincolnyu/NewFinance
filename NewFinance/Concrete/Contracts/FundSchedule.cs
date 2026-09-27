@@ -82,7 +82,7 @@ namespace NewFinance.Concrete.Contracts
                         {
                             anualFee = FeeCap.Value;
                         }
-                        var fee = anualFee * (currentTime - lastTime).Days / Constants.DaysPerYear;
+                        var fee = anualFee * (decimal)(currentTime - lastTime).TotalDays / Constants.DaysPerYear;
 
                         if (FundFeesTrackerKey is not null)
                         {

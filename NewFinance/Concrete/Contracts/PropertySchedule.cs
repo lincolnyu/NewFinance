@@ -25,7 +25,7 @@ namespace NewFinance.Concrete.Contracts
                     var lastTime = lastProcessedTime ?? schedule.StartTime!.Value;
 
                     var feeInflation = schedule.FeeInflation.GetRelativeInflationFactor(schedule.StartTime!.Value, currentTime);
-                    var fees =  schedule.InitialFeeRate * feeInflation * (currentTime - lastTime).Days / Constants.DaysPerYear;
+                    var fees =  schedule.InitialFeeRate * feeInflation * (decimal)(currentTime - lastTime).TotalDays / Constants.DaysPerYear;
 
                     executor.ExecuteTransaction(schedule.CostPaymentAccount, -fees, schedule, $"Fees for {schedule.Investment.Name}");
                     

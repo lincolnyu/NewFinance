@@ -26,7 +26,7 @@ public class ContractExecutor
 
         var minNextTime = this.ExecuteContracts(Contracts, currentTime);
 
-        foreach (var contract in Contracts) contract.PostExecute();
+        Helpers.PostExecuteContracts(Contracts);
 
         if (NextForcedTime != null)
         {

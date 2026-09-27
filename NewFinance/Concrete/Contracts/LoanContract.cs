@@ -9,12 +9,14 @@ public class LoanContract : AccountBindingContract
 {
     // Australian lenders (e.g. ANZ) calculate daily interest as annual rate / 365.
     private const decimal InterestDaysPerYear = 365m;
+    private decimal _accountBalanceLastIteration;
 
     private decimal _accumulatedInterest;
 
+    private decimal _cashBalanceLastIteration;
+
     // Number of repayments charged so far. Charge dates are anchored to the settlement date to avoid month-end drift.
     private int _chargeCount;
-
     private decimal? _monthlyPayment;
     private decimal _monthlyPaymentRate;
 
@@ -59,6 +61,9 @@ public class LoanContract : AccountBindingContract
     public decimal AnnualInterestRate { get; set; } // e.g. 0.05 for 5%
 
     public Action<LoanContract, ContractExecutor, decimal>? OnSettlement { get; set; }
+
+    // Like the lender, the repayment is fixed until the rate changes, then recalculated from the current balance over the remaining term.
+    private int TermMonths => (int)(LoanTermYears!.Value * 12);
 
     // Interest accrues daily on the daily balance (as lenders do) and is charged on the next charge time.
     private DateTime NextCalculationTime(DateTime current)
@@ -137,9 +142,6 @@ public class LoanContract : AccountBindingContract
         return (currentTime, newTime);
     }
 
-    // Like the lender, the repayment is fixed until the rate changes, then recalculated from the current balance over the remaining term.
-    private int TermMonths => (int)(LoanTermYears!.Value * 12);
-
     private decimal GetMonthlyPayment()
     {
         if (_monthlyPayment is null || _monthlyPaymentRate != AnnualInterestRate)
@@ -169,7 +171,7 @@ public class LoanContract : AccountBindingContract
         var fractionOfYear = (decimal)time.TotalDays / InterestDaysPerYear;
 
         // Assuming the offset account reduces the interest applied on the loan balance.
-        var interestApplicable = Math.Max(0, -Account!.Balance - CashAccount.Balance * OffsetRatio);
+        var interestApplicable = Math.Max(0, -_accountBalanceLastIteration - _cashBalanceLastIteration * OffsetRatio);
         _accumulatedInterest += AnnualInterestRate * fractionOfYear * interestApplicable;
     }
 
@@ -183,8 +185,8 @@ public class LoanContract : AccountBindingContract
             // The final scheduled repayment clears whatever is left (e.g. extra interest from leap years).
             var isFinalRepayment = _chargeCount + 1 >= TermMonths;
             principalPayment = isFinalRepayment
-                ? Math.Max(0, -Account!.Balance)
-                : Math.Max(0, Math.Min(monthlyPayment - _accumulatedInterest, -Account!.Balance));
+                ? Math.Max(0, -_accountBalanceLastIteration)
+                : Math.Max(0, Math.Min(monthlyPayment - _accumulatedInterest, -_accountBalanceLastIteration));
 
             if (principalPayment > 0)
             {
@@ -206,5 +208,12 @@ public class LoanContract : AccountBindingContract
             executor.ChangeTrackers?[PaidInterestTrackerKey].TrackChange(-_accumulatedInterest);
 
         _accumulatedInterest = 0;
+    }
+
+    public override void PostExecute()
+    {
+        _cashBalanceLastIteration = CashAccount.Balance;
+        _accountBalanceLastIteration = Account!.Balance;
+        base.PostExecute();
     }
 }
