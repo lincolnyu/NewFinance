@@ -1,51 +1,48 @@
-namespace NewFinance.Core
+using System.Diagnostics;
+
+namespace NewFinance.Core;
+
+public class ContractExecutor
 {
-    public class ContractExecutor
+    /// <summary>
+    ///     The list of contracts to execute. The dependent contracts should be ordered in a way that they are executed after
+    ///     the contracts they depend on.
+    /// </summary>
+    public List<Contract> Contracts { get; } = new();
+
+    public DateTime? NextForcedTime { get; set; }
+
+    public ChangeTrackers? ChangeTrackers { get; set; }
+
+    public Action<Account.Transaction>? TransactionStarted { get; set; }
+
+    public DateTime CurrentTime { get; private set; }
+
+    public List<Account.Transaction> Transactions { get; } = new();
+
+    public DateTime? Execute(DateTime currentTime)
     {
-        /// <summary>
-        ///  The list of contracts to execute. The dependent contracts should be ordered in a way that they are executed after the contracts they depend on.
-        /// </summary>
-        public List<Contract> Contracts { get; } = new List<Contract>();
+        CurrentTime = currentTime;
 
-        public DateTime? NextForcedTime { get; set; }
+        var minNextTime = this.ExecuteContracts(Contracts, currentTime);
 
-        public ChangeTrackers? ChangeTrackers { get; set; }
+        foreach (var contract in Contracts) contract.PostExecute();
 
-        public Action<Account.Transaction>? TransactionStarted { get; set; }
-
-        public DateTime CurrentTime { get; private set; }
-
-        public DateTime? Execute(DateTime currentTime)
+        if (NextForcedTime != null)
         {
-            CurrentTime = currentTime;
-
-            DateTime? minNextTime = this.ExecuteContracts(Contracts, currentTime);
-
-            if (NextForcedTime != null)
-            {
-                if (currentTime >= NextForcedTime)
-                {
-                    NextForcedTime = null;
-                }
-                else if (NextForcedTime < minNextTime)
-                {
-                    minNextTime = NextForcedTime.Value;
-                }
-            }
-
-            System.Diagnostics.Debug.Assert(minNextTime is null || minNextTime > currentTime, $"Next execution time {minNextTime} should be greater than current time {currentTime}");
-    
-            return minNextTime;
+            if (currentTime >= NextForcedTime)
+                NextForcedTime = null;
+            else if (NextForcedTime < minNextTime) minNextTime = NextForcedTime.Value;
         }
 
-        public List<Account.Transaction> Transactions { get; } = new List<Account.Transaction>();
+        Debug.Assert(minNextTime is null || minNextTime > currentTime,
+            $"Next execution time {minNextTime} should be greater than current time {currentTime}");
 
-        public void ReEnsureNextForcedTime(DateTime time)
-        {
-            if (NextForcedTime == null || time < NextForcedTime)
-            {
-                NextForcedTime = time;
-            }
-        }
+        return minNextTime;
+    }
+
+    public void ReEnsureNextForcedTime(DateTime time)
+    {
+        if (NextForcedTime == null || time < NextForcedTime) NextForcedTime = time;
     }
 }
