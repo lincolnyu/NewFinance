@@ -55,7 +55,7 @@ public class CompoundFlow(
     {
         if (lastProcessedTime is null)
         {
-            executor.ExecuteTransaction(Account!, initialValue, this, $"Initial value for {Name}");
+            executor.ExecuteTransaction(Account!, initialValue, this, $"Initial value of {Name}");
             Reanchor(currentTime, getGrowthRate(Account!.Balance));
             return (currentTime, NextBookedTime(currentTime));
         }
@@ -63,7 +63,7 @@ public class CompoundFlow(
         var price = PriceAt(currentTime);
         var growth = Units * (price - CurrentPricePerShare);
         CurrentPricePerShare = price;
-        if (growth != 0) executor.ExecuteTransaction(Account!, growth, this, $"Growth for {Name}");
+        if (growth != 0) executor.ExecuteTransaction(Account!, growth, this, $"Growth of {Name}");
 
         _expectedBalance += growth;
 
