@@ -1,32 +1,31 @@
 using NewFinance.Core;
 
-namespace NewFinance.Common
+namespace NewFinance.Common;
+
+public class ContractLoader
 {
-    public class ContractLoader
+    HashSet<Contract> _addedContracts = new HashSet<Contract>();
+    
+    public List<Contract> OrderedContracts { get; } = new List<Contract>();
+
+    public void AddContract(Contract contract)
     {
-        HashSet<Contract> _addedContracts = new HashSet<Contract>();
-        
-        public List<Contract> OrderedContracts { get; } = new List<Contract>();
-
-        public void AddContract(Contract contract)
+        if (_addedContracts.Add(contract))
         {
-            if (_addedContracts.Add(contract))
-            {
-                OrderedContracts.Add(contract);
-            }
+            OrderedContracts.Add(contract);
         }
+    }
 
-        public void UnionWith(IEnumerable<Contract> contracts)
+    public void UnionWith(IEnumerable<Contract> contracts)
+    {
+        foreach (var contract in contracts)
         {
-            foreach (var contract in contracts)
-            {
-                AddContract(contract);
-            }
+            AddContract(contract);
         }
+    }
 
-        public void LoadToExecutor(ContractExecutor executor)
-        {
-            executor.Contracts.AddRange(OrderedContracts);
-        }
+    public void LoadToExecutor(ContractExecutor executor)
+    {
+        executor.Contracts.AddRange(OrderedContracts);
     }
 }

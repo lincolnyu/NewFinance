@@ -1,7 +1,6 @@
-namespace NewFinance.Core
+namespace NewFinance.Core;
+
+public interface IHasBalance
 {
-    public interface IHasBalance
-    {
-        decimal Balance { get; }
-    }
+    decimal Balance { get; }
 }

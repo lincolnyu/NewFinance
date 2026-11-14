@@ -1,29 +1,28 @@
 using NewFinance.Core;
 
-namespace NewFinance.Concrete
+namespace NewFinance.Concrete.BalanceItems;
+
+public class Equity(string name, Entity entity) : IHasBalance, IHasName
 {
-    public class Equity(string name, Entity entity) : IHasBalance, IHasName
+    public string Name => name;
+
+    public decimal Balance => CalculateBalance();
+
+    private decimal CalculateBalance()
     {
-        public string Name => name;
-
-        public decimal Balance => CalculateBalance();
-
-        private decimal CalculateBalance()
+        var equity = 0m;
+        foreach(var account in entity.Assets.Concat(entity.Liabilities))
         {
-            var equity = 0m;
-            foreach(var account in entity.Assets.Concat(entity.Liabilities))
+            var share = account.GetShare(entity);
+            if (share is not null)
             {
-                var share = account.GetShare(entity);
-                if (share is not null)
-                {
-                    equity += account.Balance * share.Value;
-                }
-                else
-                {
-                    equity += account.Balance;
-                }
+                equity += account.Balance * share.Value;
             }
-            return equity;
+            else
+            {
+                equity += account.Balance;
+            }
         }
+        return equity;
     }
 }

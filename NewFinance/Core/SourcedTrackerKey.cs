@@ -1,14 +1,13 @@
-namespace NewFinance.Core
+namespace NewFinance.Core;
+
+public record SourcedTrackerKey(object Source, string Name) : ITrackerKey
 {
-    public record SourcedTrackerKey(object Source, string Name) : ITrackerKey
+    public bool Equals(ITrackerKey? other)
     {
-        public bool Equals(ITrackerKey? other)
+        if (other is not SourcedTrackerKey key)
         {
-            if (other is not SourcedTrackerKey key)
-            {
-                return false;
-            }
-            return Source == key.Source && Name == key.Name;
+            return false;
         }
+        return Source == key.Source && Name == key.Name;
     }
 }

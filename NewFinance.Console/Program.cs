@@ -1,5 +1,4 @@
-﻿using NewFinance;
-using NewFinance.Common;
+﻿using NewFinance.Common;
 using NewFinance.Concrete;
 using NewFinance.Concrete.Accounts;
 using NewFinance.Concrete.Contracts;
