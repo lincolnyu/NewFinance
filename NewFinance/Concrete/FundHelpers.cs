@@ -1,6 +1,5 @@
-namespace NewFinance.Concrete
+namespace NewFinance.Concrete;
+
+public static class FundHelpers
 {
-    public static class FundHelpers
-    {
-    }
 }

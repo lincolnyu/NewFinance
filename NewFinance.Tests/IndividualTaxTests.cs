@@ -3,6 +3,7 @@ namespace NewFinance.Tests;
 using NewFinance.Concrete.Contracts;
 using NewFinance.Concrete.Entities;
 using NewFinance.Concrete.Rules;
+using NewFinance.Concrete;  
 using NewFinance.Core;
 
 public class IndividualTaxTests

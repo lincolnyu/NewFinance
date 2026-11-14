@@ -3,56 +3,55 @@ using NewFinance.Concrete.Entities;
 using NewFinance.Concrete.Rules;
 using NewFinance.Core;
 
-namespace NewFinance.Concrete.Contracts
+namespace NewFinance.Concrete.Contracts;
+
+public class Employment : BandedFlow
 {
-    public class Employment : BandedFlow
+    public ITrackerKey? PaygWithheldTrackerKey { get; set; }
+
+    private static readonly TimeSpan DefaultPaygWithholdingFrequency = TimeSpan.FromDays(14);
+
+    public Employment(BandedFlowDescriptor descriptor, TaxIndividual individual, Account cashAccount) : base(descriptor, cashAccount, $"Employment of {individual.Name}")
     {
-        public ITrackerKey? PaygWithheldTrackerKey { get; set; }
+        FlowBookingInterval = DefaultPaygWithholdingFrequency;
+        Individual = individual;
+    }
 
-        private static readonly TimeSpan DefaultPaygWithholdingFrequency = TimeSpan.FromDays(14);
+    public TimeSpan PaygWithholdingFrequency
+    {
+        get => FlowBookingInterval!.Value;
+        set => FlowBookingInterval = value;
+    }
 
-        public Employment(BandedFlowDescriptor descriptor, TaxIndividual individual, Account cashAccount) : base(descriptor, cashAccount, $"Employment of {individual.Name}")
+    public bool WithholdPayg { get; set; } = true;
+    public TaxIndividual Individual { get; }
+
+    protected override void ApplyInflow(ContractExecutor executor, decimal inflow, TimeSpan executionTimeSpan)
+    {
+        var paygWithheld = WithholdPayg ? EstimatePaygWithholding(inflow, executionTimeSpan, Individual) : 0m;
+
+        executor.ExecuteTransaction(Account!, inflow - paygWithheld, this, $"Inflow for {Name}");
+        if (InflowTrackerKey is not null)
         {
-            FlowBookingInterval = DefaultPaygWithholdingFrequency;
-            Individual = individual;
+            executor.ChangeTrackers?.GetOrCreateTracker(InflowTrackerKey).TrackChange(inflow);
+        }
+        if (PaygWithheldTrackerKey is not null)
+        {
+            executor.ChangeTrackers?.GetOrCreateTracker(PaygWithheldTrackerKey).TrackChange(paygWithheld);
+        }
+    }
+
+    static internal decimal EstimatePaygWithholding(decimal grossIncome, TimeSpan period, TaxIndividual? individual)
+    {
+        if (grossIncome <= 0 || period.TotalDays <= 0)
+        {
+            return 0m;
         }
 
-        public TimeSpan PaygWithholdingFrequency
-        {
-            get => FlowBookingInterval!.Value;
-            set => FlowBookingInterval = value;
-        }
+        var fractionOfYear = (decimal)(period.TotalDays / (double)Constants.DaysPerYear);
+        var annualisedIncome = grossIncome / fractionOfYear;
+        var annualTax = IndividualTax.CalculateResidentIncomeTax(annualisedIncome) +  new MedicareLevyRules().CalculateFY26(annualisedIncome, individual);
 
-        public bool WithholdPayg { get; set; } = true;
-        public TaxIndividual Individual { get; }
-
-        protected override void ApplyInflow(ContractExecutor executor, decimal inflow, TimeSpan executionTimeSpan)
-        {
-            var paygWithheld = WithholdPayg ? EstimatePaygWithholding(inflow, executionTimeSpan, Individual) : 0m;
-
-            executor.ExecuteTransaction(Account!, inflow - paygWithheld, this, $"Inflow for {Name}");
-            if (InflowTrackerKey is not null)
-            {
-                executor.ChangeTrackers?.GetOrCreateTracker(InflowTrackerKey).TrackChange(inflow);
-            }
-            if (PaygWithheldTrackerKey is not null)
-            {
-                executor.ChangeTrackers?.GetOrCreateTracker(PaygWithheldTrackerKey).TrackChange(paygWithheld);
-            }
-        }
-
-        static internal decimal EstimatePaygWithholding(decimal grossIncome, TimeSpan period, TaxIndividual? individual)
-        {
-            if (grossIncome <= 0 || period.TotalDays <= 0)
-            {
-                return 0m;
-            }
-
-            var fractionOfYear = (decimal)(period.TotalDays / (double)Constants.DaysPerYear);
-            var annualisedIncome = grossIncome / fractionOfYear;
-            var annualTax = IndividualTax.CalculateResidentIncomeTax(annualisedIncome) +  new MedicareLevyRules().CalculateFY26(annualisedIncome, individual);
-
-            return annualTax * fractionOfYear;
-        }
+        return annualTax * fractionOfYear;
     }
 }

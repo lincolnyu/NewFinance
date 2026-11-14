@@ -3,161 +3,160 @@ using NewFinance.Concrete.Entities;
 using NewFinance.Concrete.Rules;
 using NewFinance.Core;
 
-namespace NewFinance.Concrete.Contracts
+namespace NewFinance.Concrete.Contracts;
+
+public class IndividualTax(TaxIndividual taxPayer, Account cashPaymentAccount) : Contract(null, $"Individual Tax for {taxPayer.Name}")
 {
-    public class IndividualTax(TaxIndividual taxPayer, Account cashPaymentAccount) : Contract(null, $"Individual Tax for {taxPayer.Name}")
+    public ITrackerKey? TaxPaidTrackerKey { get; set; }
+
+    public TaxIndividual TaxPayer { get; } = taxPayer;
+
+    private decimal _rentalLossPool = 0m;
+
+    protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
     {
-        public ITrackerKey? TaxPaidTrackerKey { get; set; }
-
-        public TaxIndividual TaxPayer { get; } = taxPayer;
-
-        private decimal _rentalLossPool = 0m;
-
-        protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
+        if (currentTime.IsEOFY())
         {
-            if (currentTime.IsEOFY())
-            {
-                PerformTaxAccounting(executor, currentTime);
-            }
-
-            var nextEOFY = currentTime.NextEOFY();
-
-            executor.ReEnsureNextForcedTime(nextEOFY);
-
-            return (currentTime, nextEOFY);
+            PerformTaxAccounting(executor, currentTime);
         }
 
-        private void PerformTaxAccounting(ContractExecutor executor, DateTime currentTime)
+        var nextEOFY = currentTime.NextEOFY();
+
+        executor.ReEnsureNextForcedTime(nextEOFY);
+
+        return (currentTime, nextEOFY);
+    }
+
+    private void PerformTaxAccounting(ContractExecutor executor, DateTime currentTime)
+    {
+        decimal totalPropertyGain = 0m;
+        foreach (var asset in TaxPayer.Assets)
         {
-            decimal totalPropertyGain = 0m;
-            foreach (var asset in TaxPayer.Assets)
+            if (asset is Property property)
             {
-                if (asset is Property property)
+                var propertySchedule = property.Schedule!;
+
+                // This is also to clear trackers.
+
+                var share = property.GetShare(TaxPayer)?? 0m;
+
+                var loan = TaxPayer.Liabilities.OfType<Loan>().FirstOrDefault(loan => loan.Contract!.Property == property);
+                
+                var netRentalIncome = (executor.GetOrCreateTrackerSubscription(propertySchedule.RentInducedStream?.InflowTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m) * share;
+
+                var interestPaid = (-executor.GetOrCreateTrackerSubscription(loan?.Contract?.PaidInterestTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m) * share;
+
+                var fees = (-executor.GetOrCreateTrackerSubscription(propertySchedule.PropertyFeesTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m) * share;
+
+                var netRentalTaxable = netRentalIncome - interestPaid - fees;
+
+                if (propertySchedule.IsInvestmentProperty)
                 {
-                    var propertySchedule = property.Schedule!;
-
-                    // This is also to clear trackers.
-
-                    var share = property.GetShare(TaxPayer)?? 0m;
-
-                    var loan = TaxPayer.Liabilities.OfType<Loan>().FirstOrDefault(loan => loan.Contract!.Property == property);
-                    
-                    var netRentalIncome = (executor.GetOrCreateTrackerSubscription(propertySchedule.RentInducedStream?.InflowTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m) * share;
-
-                    var interestPaid = (-executor.GetOrCreateTrackerSubscription(loan?.Contract?.PaidInterestTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m) * share;
-
-                    var fees = (-executor.GetOrCreateTrackerSubscription(propertySchedule.PropertyFeesTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m) * share;
-
-                    var netRentalTaxable = netRentalIncome - interestPaid - fees;
-
-                    if (propertySchedule.IsInvestmentProperty)
+                    var allowNegativeGearing = IsNegativeGearingAllowed(property, currentTime);
+                    if (!allowNegativeGearing && netRentalTaxable < 0)
                     {
-                        var allowNegativeGearing = IsNegativeGearingAllowed(property, currentTime);
-                        if (!allowNegativeGearing && netRentalTaxable < 0)
-                        {
-                            _rentalLossPool += -netRentalTaxable;
-                            netRentalTaxable = 0;
-                        }
-
-                        decimal? netCapitalGain = null;
-
-                        var salesProceedsTrackerKey =  PropertyHelpers.SalesProceedsForTaxTrackerKey(property);
-                        if (executor.ChangeTrackers?.TryGetTracker(salesProceedsTrackerKey, out var salesProceedsTracker) == true) // just sold
-                        {
-                            // Do not reset here as it may be used by another tax individual if co-owned.
-                            decimal salesProceeds = salesProceedsTracker![this].TrackedChange;
-                            var capitalGain = salesProceeds - property.PurchaseAdditionalCost - property.Schedule!.PurchasePrice;
-                            netCapitalGain = capitalGain * share;
-                        }
-                        totalPropertyGain += netRentalTaxable + (netCapitalGain ?? 0);
+                        _rentalLossPool += -netRentalTaxable;
+                        netRentalTaxable = 0;
                     }
-                }
-            }
 
-            if (totalPropertyGain > 0 && _rentalLossPool > 0)
-            {
-                var lossOffset = Math.Min(_rentalLossPool, totalPropertyGain);
-                _rentalLossPool -= lossOffset;
-                totalPropertyGain -= lossOffset;
-            }
+                    decimal? netCapitalGain = null;
 
-            decimal totalIncome = 0;
-            decimal totalDeduction = 0;
-            decimal totalPaygWithheld = 0;
-            foreach (var contract in TaxPayer.TaxableContracts)
-            {
-                if (contract is Employment employment)
-                {
-                    totalIncome += executor.GetOrCreateTrackerSubscription(employment.InflowTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m;
-                    totalPaygWithheld += executor.GetOrCreateTrackerSubscription(employment.PaygWithheldTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m;
+                    var salesProceedsTrackerKey =  PropertyHelpers.SalesProceedsForTaxTrackerKey(property);
+                    if (executor.ChangeTrackers?.TryGetTracker(salesProceedsTrackerKey, out var salesProceedsTracker) == true) // just sold
+                    {
+                        // Do not reset here as it may be used by another tax individual if co-owned.
+                        decimal salesProceeds = salesProceedsTracker![this].TrackedChange;
+                        var capitalGain = salesProceeds - property.PurchaseAdditionalCost - property.Schedule!.PurchasePrice;
+                        netCapitalGain = capitalGain * share;
+                    }
+                    totalPropertyGain += netRentalTaxable + (netCapitalGain ?? 0);
                 }
-                else if (contract is Deductible expense)
-                {
-                    totalDeduction += -executor.GetOrCreateTrackerSubscription(expense.InflowTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m;
-                }
-            }
-
-            // Final tax workout
-            decimal totalTaxableIncome = Math.Max(0, totalIncome + totalPropertyGain - totalDeduction);
-            decimal residentialIncome = CalculateResidentIncomeTax(totalTaxableIncome);
-            decimal medicareLevy = new MedicareLevyRules().CalculateFY26(totalTaxableIncome, TaxPayer);
-            decimal totalTaxPayable = residentialIncome +  medicareLevy;
-            decimal taxAssessmentBalance = totalTaxPayable - totalPaygWithheld;
-            executor.ExecuteTransaction(cashPaymentAccount, -taxAssessmentBalance, this, $"Tax assessment for {Name}");
-            if (TaxPaidTrackerKey is not null)
-            {
-                executor.ChangeTrackers?[TaxPaidTrackerKey].TrackChange(-totalTaxPayable);
             }
         }
 
-        private bool IsNegativeGearingAllowed(Property property, DateTime currentTime)
+        if (totalPropertyGain > 0 && _rentalLossPool > 0)
         {
-            //### Labor's Grandfathering Rules
-            //| Purchase Date | Type of Property | Negative Gearing Allowed? |
-            //|---------------|------------------|---------------------------|
-            //| Before 7:30pm 12 May 2026 | Any | Fully grandfathered (unchanged) |
-            //| After 12 May 2026 | **New build** | Yes (full negative gearing continues) |
-            //| After 12 May 2026 | **Established house** | Only until 30 June 2027. After that → restricted |
-
-            if (property.Schedule!.PurchaseTime < new DateTime(2026, 5, 12, 19, 30, 0) || property.IsPurchasedAsNewBuild)
-            {
-                return true;
-            }
-            else if (currentTime <= new DateTime(2027, 6, 30))
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            var lossOffset = Math.Min(_rentalLossPool, totalPropertyGain);
+            _rentalLossPool -= lossOffset;
+            totalPropertyGain -= lossOffset;
         }
 
-        internal static decimal CalculateResidentIncomeTax(decimal taxableIncome)
+        decimal totalIncome = 0;
+        decimal totalDeduction = 0;
+        decimal totalPaygWithheld = 0;
+        foreach (var contract in TaxPayer.TaxableContracts)
         {
-            taxableIncome = Math.Max(0, taxableIncome);
-
-            if (taxableIncome <= 18_200m)
+            if (contract is Employment employment)
             {
-                return 0m;
+                totalIncome += executor.GetOrCreateTrackerSubscription(employment.InflowTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m;
+                totalPaygWithheld += executor.GetOrCreateTrackerSubscription(employment.PaygWithheldTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m;
             }
-
-            if (taxableIncome <= 45_000m)
+            else if (contract is Deductible expense)
             {
-                return (taxableIncome - 18_200m) * 0.16m;
+                totalDeduction += -executor.GetOrCreateTrackerSubscription(expense.InflowTrackerKey, this)?.GetTrackedChangeAndReset() ?? 0m;
             }
-
-            if (taxableIncome <= 135_000m)
-            {
-                return 4_288m + (taxableIncome - 45_000m) * 0.30m;
-            }
-
-            if (taxableIncome <= 190_000m)
-            {
-                return 31_288m + (taxableIncome - 135_000m) * 0.37m;
-            }
-
-            return 51_638m + (taxableIncome - 190_000m) * 0.45m;
         }
+
+        // Final tax workout
+        decimal totalTaxableIncome = Math.Max(0, totalIncome + totalPropertyGain - totalDeduction);
+        decimal residentialIncome = CalculateResidentIncomeTax(totalTaxableIncome);
+        decimal medicareLevy = new MedicareLevyRules().CalculateFY26(totalTaxableIncome, TaxPayer);
+        decimal totalTaxPayable = residentialIncome +  medicareLevy;
+        decimal taxAssessmentBalance = totalTaxPayable - totalPaygWithheld;
+        executor.ExecuteTransaction(cashPaymentAccount, -taxAssessmentBalance, this, $"Tax assessment for {Name}");
+        if (TaxPaidTrackerKey is not null)
+        {
+            executor.ChangeTrackers?[TaxPaidTrackerKey].TrackChange(-totalTaxPayable);
+        }
+    }
+
+    private bool IsNegativeGearingAllowed(Property property, DateTime currentTime)
+    {
+        //### Labor's Grandfathering Rules
+        //| Purchase Date | Type of Property | Negative Gearing Allowed? |
+        //|---------------|------------------|---------------------------|
+        //| Before 7:30pm 12 May 2026 | Any | Fully grandfathered (unchanged) |
+        //| After 12 May 2026 | **New build** | Yes (full negative gearing continues) |
+        //| After 12 May 2026 | **Established house** | Only until 30 June 2027. After that → restricted |
+
+        if (property.Schedule!.PurchaseTime < new DateTime(2026, 5, 12, 19, 30, 0) || property.IsPurchasedAsNewBuild)
+        {
+            return true;
+        }
+        else if (currentTime <= new DateTime(2027, 6, 30))
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    internal static decimal CalculateResidentIncomeTax(decimal taxableIncome)
+    {
+        taxableIncome = Math.Max(0, taxableIncome);
+
+        if (taxableIncome <= 18_200m)
+        {
+            return 0m;
+        }
+
+        if (taxableIncome <= 45_000m)
+        {
+            return (taxableIncome - 18_200m) * 0.16m;
+        }
+
+        if (taxableIncome <= 135_000m)
+        {
+            return 4_288m + (taxableIncome - 45_000m) * 0.30m;
+        }
+
+        if (taxableIncome <= 190_000m)
+        {
+            return 31_288m + (taxableIncome - 135_000m) * 0.37m;
+        }
+
+        return 51_638m + (taxableIncome - 190_000m) * 0.45m;
     }
 }

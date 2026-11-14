@@ -1,109 +1,109 @@
-using NewFinance.Common;
 using NewFinance.Concrete.Accounts;
+using NewFinance.Concrete.Contracts;
+using NewFinance.Common;
 using NewFinance.Core;
 
-namespace NewFinance.Concrete.Contracts
+namespace NewFinance.Concrete;
+
+public static class PropertyHelpers
 {
-    public static class PropertyHelpers
+    public const string SalesProceedsForTaxTrackerName = "SalesProceedsForTax";
+
+    public static ITrackerKey SalesProceedsForTaxTrackerKey(Property property) => Helpers.CreateTrackerKeyWithSource(property, SalesProceedsForTaxTrackerName);
+
+    public static Property CreatePropertyWithSchedule(string name, DateTime purchaseTime, decimal purchasePrice, decimal purchaseAdditionalCost, DateTime initialTime, decimal initialValue, decimal growthRate, 
+        decimal priceValueCap,  decimal initialBaseAnnualFeeRate, decimal initialRentalFeeRate, decimal levyAndRatesInflationRate, Account cashAccount)
     {
-        public const string SalesProceedsForTaxTrackerName = "SalesProceedsForTax";
-
-        public static ITrackerKey SalesProceedsForTaxTrackerKey(Property property) => Helpers.CreateTrackerKeyWithSource(property, SalesProceedsForTaxTrackerName);
-
-        public static Property CreatePropertyWithSchedule(string name, DateTime purchaseTime, decimal purchasePrice, decimal purchaseAdditionalCost, DateTime initialTime, decimal initialValue, decimal growthRate, 
-            decimal priceValueCap,  decimal initialBaseAnnualFeeRate, decimal initialRentalFeeRate, decimal levyAndRatesInflationRate, Account cashAccount)
+        var property = new Property(name)
         {
-            var property = new Property(name)
-            {
-                PurchaseAdditionalCost = purchaseAdditionalCost
-            };
+            PurchaseAdditionalCost = purchaseAdditionalCost
+        };
 
-            var schedule = new PropertySchedule(property, purchaseTime, purchasePrice, initialTime, initialValue, p=>p>=priceValueCap ? 0 : growthRate, cashAccount)
-            {
-                InitialAnnualBaseFeeRate = initialBaseAnnualFeeRate,
-                InitialAnnualRentalFeeRate = initialRentalFeeRate,
-                FeeInflation = FlowHelpers.ConstantInflation(purchaseTime, levyAndRatesInflationRate)
-            }.CreateAllNaturalTrackerKeys();
-            property.Schedule = schedule;
-            return property;
+        var schedule = new PropertySchedule(property, purchaseTime, purchasePrice, initialTime, initialValue, p=>p>=priceValueCap ? 0 : growthRate, cashAccount)
+        {
+            InitialAnnualBaseFeeRate = initialBaseAnnualFeeRate,
+            InitialAnnualRentalFeeRate = initialRentalFeeRate,
+            FeeInflation = FlowHelpers.ConstantInflation(purchaseTime, levyAndRatesInflationRate)
+        }.CreateAllNaturalTrackerKeys();
+        property.Schedule = schedule;
+        return property;
+    }
+
+    public static BandedFlow CreatePropertyRentalStream(string name, DateTime startTime, decimal initialYearlyRent, decimal totalRentalInducedRate, decimal rentIncreaseRate, decimal? yearlyRentCap, Account cashAccount)
+    {
+        var yearlyNetRent = initialYearlyRent * (1 - totalRentalInducedRate);
+        var rentalInflation = FlowHelpers.ConstantInflation(startTime, rentIncreaseRate);
+        var rentalNetInFlowDescriptor = rentalInflation.ApplyInflation(startTime, yearlyNetRent/Constants.DaysPerYear);
+        if (yearlyRentCap.HasValue)
+        {
+            FlowHelpers.FlowCapping(rentalNetInFlowDescriptor, yearlyRentCap.Value/Constants.DaysPerYear, false);
         }
 
-        public static BandedFlow CreatePropertyRentalStream(string name, DateTime startTime, decimal initialYearlyRent, decimal totalRentalInducedRate, decimal rentIncreaseRate, decimal? yearlyRentCap, Account cashAccount)
+        return new BandedFlow(rentalNetInFlowDescriptor, cashAccount, name).CreateAllNaturalTrackerKeys();
+    }
+
+    public static Loan CreatePersonalLoan(string name, DateTime startTime, decimal loanAmount, Account cashAccount, decimal? loanTermYears, decimal annualInterestRate)
+    {
+        var loan = new Loan($"Personal Loan {name}");
+
+        var loanContract = new LoanContract(loan, null!, null, startTime, loanAmount)
         {
-            var yearlyNetRent = initialYearlyRent * (1 - totalRentalInducedRate);
-            var rentalInflation = FlowHelpers.ConstantInflation(startTime, rentIncreaseRate);
-            var rentalNetInFlowDescriptor = rentalInflation.ApplyInflation(startTime, yearlyNetRent/Constants.DaysPerYear);
-            if (yearlyRentCap.HasValue)
-            {
-                FlowHelpers.FlowCapping(rentalNetInFlowDescriptor, yearlyRentCap.Value/Constants.DaysPerYear, false);
-            }
+            CashAccount = cashAccount,
+            LoanTermYears = loanTermYears,
+            AnnualInterestRate = annualInterestRate
+        }.CreateAllNaturalTrackerKeys();
+        loan.Contract = loanContract;
 
-            return new BandedFlow(rentalNetInFlowDescriptor, cashAccount, name).CreateAllNaturalTrackerKeys();
-        }
+        return loan;
+    }
 
-        public static Loan CreatePersonalLoan(string name, DateTime startTime, decimal loanAmount, Account cashAccount, decimal? loanTermYears, decimal annualInterestRate)
+    public static Loan CreatePropertyLoan(Property property, decimal? deposit, DateTime settlementTime, decimal loanAmount, Account cashAccount, decimal offsetRatio, decimal? loanTermYears, decimal annualInterestRate)
+    {
+        var loan = new Loan($"Loan for {property.Name}");
+
+        var loanContract = new LoanContract(loan, property, deposit, settlementTime, loanAmount)
         {
-            var loan = new Loan($"Personal Loan {name}");
+            CashAccount = cashAccount,
+            OffsetRatio = offsetRatio,
+            LoanTermYears = loanTermYears,
+            AnnualInterestRate = annualInterestRate
+        }.CreateAllNaturalTrackerKeys();
+        loan.Contract = loanContract;
 
-            var loanContract = new LoanContract(loan, null!, null, startTime, loanAmount)
-            {
-                CashAccount = cashAccount,
-                LoanTermYears = loanTermYears,
-                AnnualInterestRate = annualInterestRate
-            }.CreateAllNaturalTrackerKeys();
-            loan.Contract = loanContract;
+        return loan;
+    }
 
-            return loan;
-        }
+    public static decimal BasicCapitalGain(Property property, decimal saleCost)
+    {
+        var salePrice = property.Balance;
+        var saleProceeds = salePrice - saleCost;
+        var capitalGain = saleProceeds - property.Schedule!.PurchasePrice - property.PurchaseAdditionalCost;
+        return capitalGain;
+    }
 
-        public static Loan CreatePropertyLoan(Property property, decimal? deposit, DateTime settlementTime, decimal loanAmount, Account cashAccount, decimal offsetRatio, decimal? loanTermYears, decimal annualInterestRate)
-        {
-            var loan = new Loan($"Loan for {property.Name}");
-
-            var loanContract = new LoanContract(loan, property, deposit, settlementTime, loanAmount)
-            {
-                CashAccount = cashAccount,
-                OffsetRatio = offsetRatio,
-                LoanTermYears = loanTermYears,
-                AnnualInterestRate = annualInterestRate
-            }.CreateAllNaturalTrackerKeys();
-            loan.Contract = loanContract;
-
-            return loan;
-        }
-
-        public static decimal BasicCapitalGain(Property property, decimal saleCost)
+    public static void SellProperty(Property property, decimal saleCost, Loan? loan, DateTime saleTime, Account cashAccount, Action<decimal>? onSold)
+    {
+        property.Schedule!.Sale =(saleTime, (executor, schedule) =>
         {
             var salePrice = property.Balance;
-            var saleProceeds = salePrice - saleCost;
-            var capitalGain = saleProceeds - property.Schedule!.PurchasePrice - property.PurchaseAdditionalCost;
-            return capitalGain;
-        }
+            var salesProceeds = salePrice - saleCost; 
+            var salesCashIn = salesProceeds;
 
-        public static void SellProperty(Property property, decimal saleCost, Loan? loan, DateTime saleTime, Account cashAccount, Action<decimal>? onSold)
-        {
-            property.Schedule!.Sale =(saleTime, (executor, schedule) =>
+            executor.ExecuteTransaction(property, -property.Balance, schedule, $"Sale of {property.Name}");
+
+            if (loan is not null)
             {
-                var salePrice = property.Balance;
-                var salesProceeds = salePrice - saleCost; 
-                var salesCashIn = salesProceeds;
+                var loanRepayment = loan.Balance;
+                executor.ExecuteTransaction(loan, -loanRepayment, schedule, $"Closure of loan {loan.Name}");
+                salesCashIn += loanRepayment;
+            }
 
-                executor.ExecuteTransaction(property, -property.Balance, schedule, $"Sale of {property.Name}");
+            var trackerKey = SalesProceedsForTaxTrackerKey(property);
+            executor.ChangeTrackers?.GetOrCreateTracker(trackerKey).TrackChange(salesProceeds);
 
-                if (loan is not null)
-                {
-                    var loanRepayment = loan.Balance;
-                    executor.ExecuteTransaction(loan, -loanRepayment, schedule, $"Closure of loan {loan.Name}");
-                    salesCashIn += loanRepayment;
-                }
-
-                var trackerKey = SalesProceedsForTaxTrackerKey(property);
-                executor.ChangeTrackers?.GetOrCreateTracker(trackerKey).TrackChange(salesProceeds);
-
-                executor.ExecuteTransaction(cashAccount, salesCashIn, schedule, $"Proceeds from sale of {property.Name}");
-                
-                onSold?.Invoke(salesCashIn);
-            });
-        }
+            executor.ExecuteTransaction(cashAccount, salesCashIn, schedule, $"Proceeds from sale of {property.Name}");
+            
+            onSold?.Invoke(salesCashIn);
+        });
     }
 }

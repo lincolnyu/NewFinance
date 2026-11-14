@@ -1,21 +1,20 @@
 using NewFinance.Core;
 
-namespace NewFinance.Concrete.Contracts
+namespace NewFinance.Concrete.Contracts;
+
+public class OneOff(DateTime time, string name, Action<ContractExecutor, OneOff> oneOffAction) : Contract(time, name)
 {
-    public class OneOff(DateTime time, string name, Action<ContractExecutor, OneOff> oneOffAction) : Contract(time, name)
+    protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
     {
-        protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
+        if (currentTime == StartTime)
         {
-            if (currentTime == StartTime)
-            {
-                oneOffAction(executor, this); // Execute the provided action at the specified time.
-                IsCompleted = true; // Mark the contract as completed after execution.
-                return (currentTime, null);
-            }
-            else
-            {
-                throw new InvalidOperationException($"OneOff contract should only be executed at its start time {StartTime}, but got {currentTime}");
-            }
+            oneOffAction(executor, this); // Execute the provided action at the specified time.
+            IsCompleted = true; // Mark the contract as completed after execution.
+            return (currentTime, null);
+        }
+        else
+        {
+            throw new InvalidOperationException($"OneOff contract should only be executed at its start time {StartTime}, but got {currentTime}");
         }
     }
 }

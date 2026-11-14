@@ -1,6 +1,7 @@
 namespace NewFinance.Tests;
 
-using NewFinance.Concrete.Contracts;
+using NewFinance.Concrete;
+using NewFinance.Core;
 
 public class InflationTests
 {

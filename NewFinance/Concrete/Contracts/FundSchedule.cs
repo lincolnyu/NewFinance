@@ -2,228 +2,227 @@ using NewFinance.Common;
 using NewFinance.Concrete.Accounts;
 using NewFinance.Core;
 
-namespace NewFinance.Concrete.Contracts
+namespace NewFinance.Concrete.Contracts;
+
+public class FundSchedule : InvestmentSchedule
 {
-    public class FundSchedule : InvestmentSchedule
+    public ITrackerKey? FundCapitalGainTrackerKey { get; init; }
+    public ITrackerKey? FundYieldTrackerKey { get; init; }
+    public ITrackerKey? FundFeesTrackerKey { get; init; }
+
+    private Dictionary<decimal, decimal> _positions = new Dictionary<decimal, decimal>();   // Price to shares mapping.
+
+    // Define properties and methods for FundSchedule here
+    public FundSchedule(Fund fund, DateTime startTime, decimal initialValue, Func<decimal, decimal> getGrowthRate, 
+        Func<FundSchedule, TimeSpan, decimal> getYield, Func<decimal, (Account, decimal)>? cash) : base(fund, startTime, initialValue, getGrowthRate)
     {
-        public ITrackerKey? FundCapitalGainTrackerKey { get; init; }
-        public ITrackerKey? FundYieldTrackerKey { get; init; }
-        public ITrackerKey? FundFeesTrackerKey { get; init; }
+        YieldContract = new ContextualContract(
+            startTime, 
+            "Investment Yield",
+            this,
+            (context, executor, lastProcessedTime, lastBookedTime, currentTime) =>
+            {
+                var schedule = (FundSchedule)context;
+                var lastTime = lastProcessedTime ?? schedule.StartTime!.Value;
 
-        private Dictionary<decimal, decimal> _positions = new Dictionary<decimal, decimal>();   // Price to shares mapping.
+                var yield = getYield(schedule, currentTime - lastTime);
+                decimal reinvestment = yield;
 
-        // Define properties and methods for FundSchedule here
-        public FundSchedule(Fund fund, DateTime startTime, decimal initialValue, Func<decimal, decimal> getGrowthRate, 
-            Func<FundSchedule, TimeSpan, decimal> getYield, Func<decimal, (Account, decimal)>? cash) : base(fund, startTime, initialValue, getGrowthRate)
-        {
-            YieldContract = new ContextualContract(
-                startTime, 
-                "Investment Yield",
-                this,
-                (context, executor, lastProcessedTime, lastBookedTime, currentTime) =>
+                if (cash is not null)
+                {
+                    (var cashAccount, var cashAmount) = cash(yield); 
+                    reinvestment -= cashAmount;
+
+                    if (reinvestment < 0)
+                    {
+                        // sell
+                        Trade(executor, reinvestment, out var profit);
+                        // TODO capital gain
+                        // tax for profit
+                    }
+                    else if (reinvestment > 0)
+                    {
+                        // buy
+                        Trade(executor, reinvestment, out var _);
+                    }
+
+                    if (cashAmount > 0)
+                    {
+                        executor.ExecuteTransaction(cashAccount, cashAmount, YieldContract!, $"Yield for {schedule.Investment.Name}");
+                        if (FundYieldTrackerKey is not null)
+                        {
+                            executor.ChangeTrackers?.GetOrCreateTracker(FundYieldTrackerKey).TrackChange(cashAmount);
+                        }
+                        // tax for yield
+                    }
+                }
+                
+                if (reinvestment > 0)
+                {
+                    executor.ExecuteTransaction(schedule.Investment, reinvestment, schedule.YieldContract!, $"Reinvestment for {schedule.Investment.Name}");
+                }
+
+                return (currentTime, null); // Returning null as booked time letting the primary contract to drive.
+            }
+        );
+
+        FeeContract = new ContextualContract(
+            startTime, 
+            "Investment Fees",
+            this,
+            (context, executor, lastProcessedTime, lastBookedTime, currentTime) =>
+            {
+                var newBookedTime = ContractHelpers.RunPeriodic(FeePeriod, lastProcessedTime ?? startTime, currentTime, () =>
                 {
                     var schedule = (FundSchedule)context;
                     var lastTime = lastProcessedTime ?? schedule.StartTime!.Value;
 
-                    var yield = getYield(schedule, currentTime - lastTime);
-                    decimal reinvestment = yield;
-
-                    if (cash is not null)
+                    var annualFee = schedule.Investment.Balance * FeeRateToValue;
+                    if (annualFee > FeeCap)
                     {
-                        (var cashAccount, var cashAmount) = cash(yield); 
-                        reinvestment -= cashAmount;
-
-                        if (reinvestment < 0)
-                        {
-                            // sell
-                            Trade(executor, reinvestment, out var profit);
-                            // TODO capital gain
-                            // tax for profit
-                        }
-                        else if (reinvestment > 0)
-                        {
-                            // buy
-                            Trade(executor, reinvestment, out var _);
-                        }
-
-                        if(cashAmount > 0)
-                        {
-                            executor.ExecuteTransaction(cashAccount, cashAmount, YieldContract!, $"Yield for {schedule.Investment.Name}");
-                            if (FundYieldTrackerKey is not null)
-                            {
-                                executor.ChangeTrackers?.GetOrCreateTracker(FundYieldTrackerKey).TrackChange(cashAmount);
-                            }
-                            // tax for yield
-                        }
+                        annualFee = FeeCap.Value;
                     }
-                    
-                    if (reinvestment > 0)
+                    var fee = annualFee * (decimal)(currentTime - lastTime).TotalDays / Constants.DaysPerYear;
+
+                    if (FundFeesTrackerKey is not null)
                     {
-                        executor.ExecuteTransaction(schedule.Investment, reinvestment, schedule.YieldContract!, $"Reinvestment for {schedule.Investment.Name}");
+                        executor.ChangeTrackers?.GetOrCreateTracker(FundFeesTrackerKey).TrackChange(-fee);
                     }
 
-                    return (currentTime, null); // Returning null as booked time letting the primary contract to drive.
-                }
-            );
-
-            FeeContract = new ContextualContract(
-                startTime, 
-                "Investment Fees",
-                this,
-                (context, executor, lastProcessedTime, lastBookedTime, currentTime) =>
-                {
-                    var newBookedTime = ContractHelpers.RunPeriodic(FeePeriod, lastProcessedTime ?? startTime, currentTime, () =>
+                    decimal remainingFee = fee;
+                    if (schedule.FeePaymentAccount is not null)
                     {
-                        var schedule = (FundSchedule)context;
-                        var lastTime = lastProcessedTime ?? schedule.StartTime!.Value;
-
-                        var anualFee = schedule.Investment.Balance * FeeRateToValue;
-                        if (anualFee > FeeCap)
+                        if(schedule.FeePaymentAccount.Balance > remainingFee)
                         {
-                            anualFee = FeeCap.Value;
+                            executor.ExecuteTransaction(schedule.FeePaymentAccount, -remainingFee, schedule.FeeContract!, $"Fees for {schedule.Investment.Name}");
+                            remainingFee = 0;
                         }
-                        var fee = anualFee * (decimal)(currentTime - lastTime).TotalDays / Constants.DaysPerYear;
-
-                        if (FundFeesTrackerKey is not null)
+                        else
                         {
-                            executor.ChangeTrackers?.GetOrCreateTracker(FundFeesTrackerKey).TrackChange(-fee);
+                            executor.ExecuteTransaction(schedule.FeePaymentAccount, -schedule.FeePaymentAccount.Balance, schedule.FeeContract!, $"Fees for {schedule.Investment.Name}");
+                            remainingFee -= schedule.FeePaymentAccount.Balance;
                         }
+                    }
 
-                        decimal remainingFee = fee;
-                        if (schedule.FeePaymentAccount is not null)
-                        {
-                            if(schedule.FeePaymentAccount.Balance > remainingFee)
-                            {
-                                executor.ExecuteTransaction(schedule.FeePaymentAccount, -remainingFee, schedule.FeeContract!, $"Fees for {schedule.Investment.Name}");
-                                remainingFee = 0;
-                            }
-                            else
-                            {
-                                executor.ExecuteTransaction(schedule.FeePaymentAccount, -schedule.FeePaymentAccount.Balance, schedule.FeeContract!, $"Fees for {schedule.Investment.Name}");
-                                remainingFee -= schedule.FeePaymentAccount.Balance;
-                            }
-                        }
+                    if (remainingFee > Investment.Balance)
+                    {
+                        // TODO Handle and report the error
+                    }
+                    else if (remainingFee > 0)
+                    {
+                        Trade(executor, -remainingFee, out var _);
+                    }
+                });
 
-                        if (remainingFee > Investment.Balance)
-                        {
-                            // TODO Handle and report the error
-                        }
-                        else if (remainingFee > 0)
-                        {
-                            Trade(executor, -remainingFee, out var _);
-                        }
-                    });
-
-                    return (currentTime, newBookedTime); // Returning null as booked time letting the primary contract to drive.
-                }
-            );
-        }
-
-        public void Trade(ContractExecutor executor, decimal netBuy, out decimal? profit)
-        {
-            profit = null;
-            var currentPrice = Value.CurrentPricePerShare;
-            decimal shares = netBuy / currentPrice;
-            if (netBuy > 0)    // buy
-            {
-                _positions[currentPrice] = _positions.GetValueOrDefault(currentPrice, 0m) + shares;
-                executor.ExecuteTransaction(Investment, netBuy, this, $"Buy shares for {Investment.Name}");
+                return (currentTime, newBookedTime); // Returning null as booked time letting the primary contract to drive.
             }
-            else    // sell
+        );
+    }
+
+    public void Trade(ContractExecutor executor, decimal netBuy, out decimal? profit)
+    {
+        profit = null;
+        var currentPrice = Value.CurrentPricePerShare;
+        decimal shares = netBuy / currentPrice;
+        if (netBuy > 0)    // buy
+        {
+            _positions[currentPrice] = _positions.GetValueOrDefault(currentPrice, 0m) + shares;
+            executor.ExecuteTransaction(Investment, netBuy, this, $"Buy shares for {Investment.Name}");
+        }
+        else    // sell
+        {
+            decimal sharesToSell = -shares;
+            if (-netBuy > Investment.Balance) // sell amount is greater than balance. it's an error
             {
-                decimal sharesToSell = -shares;
-                if (-netBuy > Investment.Balance) // sell amount is greater than balance. it's an error
+                // TODO report the error
+                return;
+            }
+
+            if (-netBuy == Investment.Balance)
+            {
+                foreach (var position in _positions)
                 {
-                    // TODO report the error
-                    return;
+                    profit = (currentPrice - position.Key) * position.Value + (profit ?? 0);
                 }
-
-                if (-netBuy == Investment.Balance)
-                {
-                    foreach (var position in _positions)
-                    {
-                        profit = (currentPrice - position.Key) * position.Value + (profit ?? 0);
-                    }
-                    _positions.Clear();
-                    executor.ExecuteTransaction(Investment, -Investment.Balance, this, $"Sell all shares for {Investment.Name}");
-                    if (profit != 0 && FundCapitalGainTrackerKey is not null)
-                    {
-                        executor.ChangeTrackers?.GetOrCreateTracker(FundCapitalGainTrackerKey).TrackChange(profit ?? 0);
-                    }
-                    return;
-                }
-
-                var sortedPositions = _positions.OrderByDescending(p => p.Key).ToList(); // Sort by price descending
-                foreach (var position in sortedPositions)
-                {
-                    if (sharesToSell <= 0)
-                        break;
-
-                    decimal purchasePrice = position.Key;
-                    decimal availableShares = position.Value;
-
-                    if (availableShares <= sharesToSell)
-                    {
-                        // Sell all available shares at this price
-
-                        profit = (currentPrice - purchasePrice) * availableShares + (profit ?? 0);
-
-                        _positions.Remove(purchasePrice);
-                        sharesToSell -= availableShares;
-                    }
-                    else
-                    {
-                        profit = (currentPrice - purchasePrice) * sharesToSell + (profit ?? 0);
-
-                        // Sell only the required number of shares at this price
-                        _positions[purchasePrice] -= sharesToSell;
-                        sharesToSell = 0;
-                    }
-                }
-
-                executor.ExecuteTransaction(Investment, netBuy, this, $"Sell shares for {Investment.Name}");
-
+                _positions.Clear();
+                executor.ExecuteTransaction(Investment, -Investment.Balance, this, $"Sell all shares for {Investment.Name}");
                 if (profit != 0 && FundCapitalGainTrackerKey is not null)
                 {
                     executor.ChangeTrackers?.GetOrCreateTracker(FundCapitalGainTrackerKey).TrackChange(profit ?? 0);
                 }
+                return;
+            }
 
-                if (sharesToSell > 0)
+            var sortedPositions = _positions.OrderByDescending(p => p.Key).ToList(); // Sort by price descending
+            foreach (var position in sortedPositions)
+            {
+                if (sharesToSell <= 0)
+                    break;
+
+                decimal purchasePrice = position.Key;
+                decimal availableShares = position.Value;
+
+                if (availableShares <= sharesToSell)
                 {
-                    throw new InvalidOperationException("Not enough shares to sell.");
+                    // Sell all available shares at this price
+
+                    profit = (currentPrice - purchasePrice) * availableShares + (profit ?? 0);
+
+                    _positions.Remove(purchasePrice);
+                    sharesToSell -= availableShares;
+                }
+                else
+                {
+                    profit = (currentPrice - purchasePrice) * sharesToSell + (profit ?? 0);
+
+                    // Sell only the required number of shares at this price
+                    _positions[purchasePrice] -= sharesToSell;
+                    sharesToSell = 0;
                 }
             }
-        }
 
-        public ContextualContract YieldContract { get; }
+            executor.ExecuteTransaction(Investment, netBuy, this, $"Sell shares for {Investment.Name}");
 
-        public ContextualContract FeeContract { get; }
-
-        public TimeSpan FeePeriod { get; set; }
-
-        public decimal FeeRateToValue { get; set; }
-
-        public decimal? FeeCap { get; set; }
-
-        public Account? FeePaymentAccount { get; set; }
-
-        protected override IEnumerable<Contract> SubContracts
-        {
-            get
+            if (profit != 0 && FundCapitalGainTrackerKey is not null)
             {
-                yield return YieldContract;
-                yield return FeeContract;
+                executor.ChangeTrackers?.GetOrCreateTracker(FundCapitalGainTrackerKey).TrackChange(profit ?? 0);
+            }
+
+            if (sharesToSell > 0)
+            {
+                throw new InvalidOperationException("Not enough shares to sell.");
             }
         }
+    }
 
-        public override DateTime? Execute(ContractExecutor executor, DateTime currentTime)
+    public ContextualContract YieldContract { get; }
+
+    public ContextualContract FeeContract { get; }
+
+    public TimeSpan FeePeriod { get; set; }
+
+    public decimal FeeRateToValue { get; set; }
+
+    public decimal? FeeCap { get; set; }
+
+    public Account? FeePaymentAccount { get; set; }
+
+    protected override IEnumerable<Contract> SubContracts
+    {
+        get
         {
-            var result = base.Execute(executor, currentTime);
-            if(currentTime == StartTime)
-            {
-                _positions[1m] = Investment.Balance;
-            }
-            return result;
+            yield return YieldContract;
+            yield return FeeContract;
         }
+    }
+
+    public override DateTime? Execute(ContractExecutor executor, DateTime currentTime)
+    {
+        var result = base.Execute(executor, currentTime);
+        if(currentTime == StartTime)
+        {
+            _positions[1m] = Investment.Balance;
+        }
+        return result;
     }
 }
