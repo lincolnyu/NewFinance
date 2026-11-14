@@ -6,7 +6,6 @@ using NewFinance.Core;
 public class CompoundFlowTests
 {
     private static readonly DateTime Start = new(2025, 1, 1);
-    private static readonly TimeSpan Yearly = TimeSpan.FromDays(365);
 
     // Wakes the executor at the given times and optionally posts flows, standing in for other contracts.
     private sealed class ScriptedContract(DateTime start, IEnumerable<DateTime> times,
@@ -42,7 +41,7 @@ public class CompoundFlowTests
         TimeSpan? step = null)
     {
         var account = new Account("Asset");
-        var flow = new CompoundFlow(Start, initialValue, _ => rate, step ?? Yearly, account, "Asset");
+        var flow = new CompoundFlow(Start, initialValue, _ => rate, step ?? Constants.Yearly, account, "Asset");
         return (account, flow);
     }
 
@@ -53,7 +52,7 @@ public class CompoundFlowTests
         var executor = new ContractExecutor();
         executor.Contracts.Add(flow);
 
-        var end = Start.AddYears(1);
+        var end = Start.Add(Constants.Yearly);
         RunUntil(executor, end);
 
         Assert.Equal(Math.Round(Grow(100_000m, 0.05m, Start, end), 6), Math.Round(account.Balance, 6));
@@ -96,7 +95,7 @@ public class CompoundFlowTests
         executor.Contracts.Add(flow);
         if (!depositorFirst) executor.Contracts.Add(depositor);
 
-        var end = Start.AddYears(1);
+        var end = Start.Add(Constants.Yearly);
         RunUntil(executor, end);
 
         var expected = Grow(100_000m, 0.05m, Start, end) + Grow(10_000m, 0.05m, depositTime, end);
@@ -114,7 +113,7 @@ public class CompoundFlowTests
         var executor = new ContractExecutor();
         executor.Contracts.Add(new AggregatedContract(Start, "Schedule", [flow, depositor]));
 
-        var end = Start.AddYears(1);
+        var end = Start.Add(Constants.Yearly);
         RunUntil(executor, end);
 
         var expected = Grow(100_000m, 0.05m, Start, end) + Grow(10_000m, 0.05m, depositTime, end);
@@ -168,7 +167,7 @@ public class CompoundFlowTests
     {
         var account = new Account("Asset");
         const decimal cap = 110_000m;
-        var flow = new CompoundFlow(Start, 100_000m, v => v >= cap ? 0m : 0.05m, Yearly, account, "Asset");
+        var flow = new CompoundFlow(Start, 100_000m, v => v >= cap ? 0m : 0.05m, Constants.Yearly, account, "Asset");
 
         var end = Start.AddYears(5);
         var executor = new ContractExecutor();

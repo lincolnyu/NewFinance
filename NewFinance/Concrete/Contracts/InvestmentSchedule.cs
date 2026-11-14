@@ -28,7 +28,7 @@ public abstract class InvestmentSchedule(
     ///     function provided.
     /// </summary>
     public CompoundFlow Value { get; } = new(startTime, initialValue, getGrowthRate,
-        TimeSpan.FromDays(365), investment, $"Value of {investment.Name}");
+         Constants.Yearly, investment, $"Value of {investment.Name}");
 
     protected abstract IEnumerable<Contract> SubContracts { get; }
 
