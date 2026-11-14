@@ -92,7 +92,7 @@ public class FundSchedule : InvestmentSchedule
                     decimal remainingFee = fee;
                     if (schedule.FeePaymentAccount is not null)
                     {
-                        if(schedule.FeePaymentAccount.Balance > remainingFee)
+                        if (schedule.FeePaymentAccount.Balance > remainingFee)
                         {
                             executor.ExecuteTransaction(schedule.FeePaymentAccount, -remainingFee, schedule.FeeContract!, $"Fees for {schedule.Investment.Name}");
                             remainingFee = 0;
@@ -219,7 +219,7 @@ public class FundSchedule : InvestmentSchedule
     public override DateTime? Execute(ContractExecutor executor, DateTime currentTime)
     {
         var result = base.Execute(executor, currentTime);
-        if(currentTime == StartTime)
+        if (currentTime == StartTime)
         {
             _positions[1m] = Investment.Balance;
         }
