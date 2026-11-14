@@ -1,7 +1,6 @@
-namespace NewFinance.Core
+namespace NewFinance.Core;
+
+public interface IHasName
 {
-    public interface IHasName
-    {
-        string Name { get; }
-    }
+    string Name { get; }
 }

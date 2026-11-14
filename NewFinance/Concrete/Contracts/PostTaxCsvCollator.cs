@@ -1,137 +1,136 @@
 using NewFinance.Core;
 
-namespace NewFinance.Concrete.Contracts
+namespace NewFinance.Concrete.Contracts;
+
+public class PostTaxCsvCollator(TextWriter? writer = null) : Contract(null, "Post Tax CSV Collator")
 {
-    public class PostTaxCsvCollator(TextWriter? writer = null) : Contract(null, "Post Tax CSV Collator")
+    public const string UnnamedColumnHeader = "<unnamed>";
+
+    private readonly TextWriter? _writer = writer;
+
+    public List<List<object?>> Table { get; } = [];
+
+    public List<(object, string)> ReportedItems {get;} = [];
+
+    public HashSet<DateTime> AdditionalReportDates {get;} = new HashSet<DateTime>();
+
+    public List<string> ColumnNames {get;} = [];
+
+    private string GetColumnName((object, string?) col)
     {
-        public const string UnnamedColumnHeader = "<unnamed>";
-
-        private readonly TextWriter? _writer = writer;
-
-        public List<List<object?>> Table { get; } = [];
-
-        public List<(object, string)> ReportedItems {get;} = [];
-
-        public HashSet<DateTime> AdditionalReportDates {get;} = new HashSet<DateTime>();
-
-        public List<string> ColumnNames {get;} = [];
-
-        private string GetColumnName((object, string?) col)
+        if (!string.IsNullOrEmpty(col.Item2))
         {
-            if (!string.IsNullOrEmpty(col.Item2))
-            {
-                return col.Item2;
-            }
-            if (col.Item1 is IHasName hasName && !string.IsNullOrWhiteSpace(hasName.Name))
-            {
-                return hasName.Name;
-            }
-            return UnnamedColumnHeader;
+            return col.Item2;
         }
-
-        protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
+        if (col.Item1 is IHasName hasName && !string.IsNullOrWhiteSpace(hasName.Name))
         {
-            var isAdditionalReportDate = AdditionalReportDates.Contains(currentTime);
-            if (currentTime.IsEOFY() || isAdditionalReportDate)
-            {
-                var populateColumNames = ColumnNames.Count == 0;
+            return hasName.Name;
+        }
+        return UnnamedColumnHeader;
+    }
 
-                var row = new List<object?>() {  
-                    isAdditionalReportDate? 
-                        currentTime.ToString("yyyy-MM-dd") : 
-                        $"EOF {currentTime.Year}"
-                };
-                _writer?.WriteLine($"{currentTime:yyyy}:");
-                foreach (var col in ReportedItems)
+    protected override (DateTime processedTime, DateTime? bookedTime) Execute(ContractExecutor executor, DateTime? lastProcessedTime, DateTime? lastBookedTime, DateTime currentTime)
+    {
+        var isAdditionalReportDate = AdditionalReportDates.Contains(currentTime);
+        if (currentTime.IsEOFY() || isAdditionalReportDate)
+        {
+            var populateColumNames = ColumnNames.Count == 0;
+
+            var row = new List<object?>() {  
+                isAdditionalReportDate? 
+                    currentTime.ToString("yyyy-MM-dd") : 
+                    $"EOF {currentTime.Year}"
+            };
+            _writer?.WriteLine($"{currentTime:yyyy}:");
+            foreach (var col in ReportedItems)
+            {
+                if (col.Item1 is Entity entity)
                 {
-                    if (col.Item1 is Entity entity)
+                    foreach(var account in entity.Assets.Concat(entity.Liabilities))
                     {
-                        foreach(var account in entity.Assets.Concat(entity.Liabilities))
+                        var share = account.GetShare(entity);
+                        if (share is not null)
                         {
-                            var share = account.GetShare(entity);
-                            if (share is not null)
-                            {
-                                _writer?.WriteLine($" '{account.Name}' balance = {account.Balance * share:N2}");
-                                row.Add(account.Balance * share);
-                            }
-                            else
-                            {
-                                _writer?.WriteLine($" '{account.Name}' balance = {account.Balance:N2}");
-                                row.Add(account.Balance);
-                            }
-                            if (populateColumNames)
-                            {
-                                if (!string.IsNullOrEmpty(col!.Item2))
-                                {
-                                    ColumnNames.Add($"{col!.Item2}{account.Name}");
-                                }
-                                else
-                                {
-                                    ColumnNames.Add($"{entity.Name}.{account.Name}");
-                                }
-                            }
-                        }
-                    }
-                    else if (col.Item1 is IHasBalance balanceItem)
-                    {
-                        var name = GetColumnName(col!);
-                        _writer?.WriteLine($" '{name}' balance = {balanceItem.Balance:N2}");
-                        row.Add(balanceItem.Balance);
-                        if (populateColumNames)
-                        {
-                            ColumnNames.Add(name);
-                        }
-                    }
-                    else if (col.Item1 is Func<ChangeTrackers.Tracker> getTracker || col.Item1 is ChangeTrackers.Tracker)
-                    {
-                        var tracker = col.Item1 is Func<ChangeTrackers.Tracker> func ? func() : (ChangeTrackers.Tracker)col.Item1;
-                        var name = GetColumnName(col!);
-                        if (name.EndsWith("ITD"))
-                        {
-                            var val = tracker["PostTaxCsvCollator-ITD"].TrackedChange;
-                            _writer?.WriteLine($" '{name}' = {val:N2}");
-                            row.Add(val);
+                            _writer?.WriteLine($" '{account.Name}' balance = {account.Balance * share:N2}");
+                            row.Add(account.Balance * share);
                         }
                         else
                         {
-                            var val = tracker["PostTaxCsvCollator"].GetTrackedChangeAndReset();
-                            _writer?.WriteLine($" '{name}' = {val:N2}");
-                            row.Add(val);
+                            _writer?.WriteLine($" '{account.Name}' balance = {account.Balance:N2}");
+                            row.Add(account.Balance);
                         }
                         if (populateColumNames)
                         {
-                            ColumnNames.Add(name);
+                            if (!string.IsNullOrEmpty(col!.Item2))
+                            {
+                                ColumnNames.Add($"{col!.Item2}{account.Name}");
+                            }
+                            else
+                            {
+                                ColumnNames.Add($"{entity.Name}.{account.Name}");
+                            }
                         }
                     }
-                    else if (col.Item1 is Func<int, int, string> cellWriter)
+                }
+                else if (col.Item1 is IHasBalance balanceItem)
+                {
+                    var name = GetColumnName(col!);
+                    _writer?.WriteLine($" '{name}' balance = {balanceItem.Balance:N2}");
+                    row.Add(balanceItem.Balance);
+                    if (populateColumNames)
                     {
-                        row.Add(cellWriter(Table.Count, row.Count));
-                        ColumnNames.Add(col.Item2);
+                        ColumnNames.Add(name);
+                    }
+                }
+                else if (col.Item1 is Func<ChangeTrackers.Tracker> getTracker || col.Item1 is ChangeTrackers.Tracker)
+                {
+                    var tracker = col.Item1 is Func<ChangeTrackers.Tracker> func ? func() : (ChangeTrackers.Tracker)col.Item1;
+                    var name = GetColumnName(col!);
+                    if (name.EndsWith("ITD"))
+                    {
+                        var val = tracker["PostTaxCsvCollator-ITD"].TrackedChange;
+                        _writer?.WriteLine($" '{name}' = {val:N2}");
+                        row.Add(val);
                     }
                     else
                     {
-                        throw new Exception($"Unsupported column type {col.Item1.GetType()}");
+                        var val = tracker["PostTaxCsvCollator"].GetTrackedChangeAndReset();
+                        _writer?.WriteLine($" '{name}' = {val:N2}");
+                        row.Add(val);
                     }
-                }
-                Table.Add(row);
-            }
-
-            if(currentTime.IsEOFY())
-            {
-                foreach (var (_, tracker) in executor.ChangeTrackers?.GetTrackers()?? [])
-                {
-                    foreach (var (subscriber, subscription) in tracker.GetSubscriptions())
+                    if (populateColumNames)
                     {
-                        if (subscriber is not string || (string)subscriber != "PostTaxCsvCollator-ITD")
-                        {
-                            subscription.Reset();
-                        }
+                        ColumnNames.Add(name);
+                    }
+                }
+                else if (col.Item1 is Func<int, int, string> cellWriter)
+                {
+                    row.Add(cellWriter(Table.Count, row.Count));
+                    ColumnNames.Add(col.Item2);
+                }
+                else
+                {
+                    throw new Exception($"Unsupported column type {col.Item1.GetType()}");
+                }
+            }
+            Table.Add(row);
+        }
+
+        if(currentTime.IsEOFY())
+        {
+            foreach (var (_, tracker) in executor.ChangeTrackers?.GetTrackers()?? [])
+            {
+                foreach (var (subscriber, subscription) in tracker.GetSubscriptions())
+                {
+                    if (subscriber is not string || (string)subscriber != "PostTaxCsvCollator-ITD")
+                    {
+                        subscription.Reset();
                     }
                 }
             }
-
-            var nextEOFY = currentTime.NextEOFY();
-            return (currentTime, nextEOFY);
         }
+
+        var nextEOFY = currentTime.NextEOFY();
+        return (currentTime, nextEOFY);
     }
 }
